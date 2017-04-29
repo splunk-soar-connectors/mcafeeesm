@@ -51,5 +51,9 @@ NITRO_DEFAULT_MAX_CONTAINERS = 10
 NITRO_CEF_CONTAINS = {
         'nDDeviceNDDevIDDstManagementIP': ['ip'],
         'nDDeviceNDDevIDSrcManagementIP': ['ip'],
+        'alertDstIP': ['ip'],
+        'alertSrcIP': ['ip'],
+        'alertDstMac': ['mac address'],
+        'alertSrcMac': ['mac address'],
         'userIDSrc': ['user name']}
 NITRO_POLL_TIME_DEFAULT = "2"
