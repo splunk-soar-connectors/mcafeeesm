@@ -665,12 +665,25 @@ class MFENitroConnector(BaseConnector):
             if (i == 0):
                 result_rows = [dict() for x in range(0, no_of_events)]
 
+            # The app makes multiple queries to the device, each time asking for a list of fields for max number of events that occured between a time range
+            # What that means is that in the Nth iteration where N > 0 we might get more events, than when N == 0.
+            # This means there was a new event generated in the same time range that we are querying, since we are sorting it ASCENDING it will be at the end
+            # and should be dropped.
+            if (len(rows) > len(result_rows)):
+                self.debug_print("Need to trim the rows")
+                del rows[len(result_rows)]
+                no_of_events = len(rows)
+
             for i, curr_row in enumerate(rows):
 
                 curr_row_dict = {}
 
                 values = curr_row.get('values')
 
+                # The columns list contains the column names and the values list contains the value of each column
+                # Map this into a dictionary that has the column name as the key and the value is picked from the values list.
+                # Basically use the item at index N of the columns list as the name of the key and the item at index N of the values
+                # list as the value, _only_ if a value exists. So during the mapping ignore keys that have an empty value.
                 map(lambda x, y: curr_row_dict.update({x['name']: y}) if y else False, columns, values)
 
                 # curr_row_dict = {k: v for k, v in curr_row_dict.iteritems() if v}
