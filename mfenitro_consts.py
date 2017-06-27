@@ -29,6 +29,7 @@ CEF_MAP = {"dstMac": "destinationMacAddress", "dstIP": "destinationAddress", "sr
 QUERY_MAX_WAIT_TIME = 5
 GET_RESULTS_URL = "qryGetResults?startPos=0&numRows=1000000&reverse=false"
 GET_STATUS_URL = "qryGetStatus"
+GET_EVENTS_URL = "qryGetCorrEventDataForID?queryType=EVENT"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 # DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.000%z"
 NITRO_RESP_DATETIME_FORMAT = "%m/%d/%Y %H:%M:%S"
@@ -36,6 +37,7 @@ CEF_EXCLUDE = [u'', '', "0", u'0']
 ID_DICT = {'name': 'Alert.ID'}
 FIRST_DICT = {'name': 'Alert.FirstTime'}
 MSG_DICT = {'name': 'Rule.msg'}
+DEFAULT_FIELD_LIST = ["LastTime", "Rule.msg", "DSIDSigID", "SrcIP", "DstIP"]
 cef_field_list = ['startTime', 'destinationUserName', 'destinationAddress', 'destinationMacAddress',
         'destinationPort', 'receiptTime', 'transportProtocol', 'sourceMacAddress',
         'sourcePort', 'applicationProtocol', 'deviceExternalId', 'sourceUserName',
@@ -55,5 +57,6 @@ NITRO_CEF_CONTAINS = {
         'alertSrcIP': ['ip'],
         'alertDstMac': ['mac address'],
         'alertSrcMac': ['mac address'],
-        'userIDSrc': ['user name']}
+        'userIDSrc': ['user name'],
+        'alertID': ['McAfee ESM Event ID']}
 NITRO_POLL_TIME_DEFAULT = "2"
