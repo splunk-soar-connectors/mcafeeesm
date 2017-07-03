@@ -585,7 +585,7 @@ class MFENitroConnector(BaseConnector):
         return_value = resp_data.get('return')
 
         if (not return_value):
-            return (action_result.set_status(phantom.APP_ERROR, "Response does not contain required key 'return'"), None)
+            return (action_result.set_status(phantom.APP_ERROR, "Response does not contain required key 'return'"))
 
         [action_result.add_data(x) for x in return_value]
 
@@ -629,7 +629,7 @@ class MFENitroConnector(BaseConnector):
         details_body = {"id": {"value": param.get("watchlist_id")}}
         ret_val, details_return_value = self._get_watchlist_details(action_result, data=details_body)
         if not details_return_value:
-            return (action_result.set_status(phantom.APP_ERROR, "Details response does not contain required key 'return'"), None)
+            return (action_result.set_status(phantom.APP_ERROR, "Details response does not contain required key 'return'"))
 
         action_result.set_summary({'name': details_return_value["name"]})
         action_result.update_summary({'type': details_return_value["customType"]["name"]})
@@ -647,7 +647,7 @@ class MFENitroConnector(BaseConnector):
         values_return_value = resp_data.get('return')
 
         if (not values_return_value):
-            return (action_result.set_status(phantom.APP_ERROR, "Values response does not contain required key 'return'"), None)
+            return (action_result.set_status(phantom.APP_ERROR, "Values response does not contain required key 'return'"))
 
         if values_return_value:
             value_list = values_return_value["data"].splitlines()
@@ -694,7 +694,7 @@ class MFENitroConnector(BaseConnector):
         ret_val, resp_data = self._make_rest_call(action_result, GET_EVENTS_URL, data=data)
 
         if (phantom.is_fail(ret_val)):
-            return (action_result.get_status(), None)
+            return (action_result.get_status())
 
         fields = ["Rule_msg" if x == "Rule.msg" else x for x in fields]
 
@@ -730,17 +730,17 @@ class MFENitroConnector(BaseConnector):
             values_to_add = literal_eval(param.get("values_to_add"))
         else:
             try:
-                values_to_add = param.get("values_to_add").split()
+                values_to_add = [x.strip(" '") for x in param.get("values_to_add").split(',')]
                 details_body = {"watchlist": {"value": param.get("watchlist_id")}, "values": values_to_add}
             except Exception as e:
                 return (action_result.set_status(phantom.APP_ERROR,
-                        "Unable to parse the 'values to add' list string Error: {0}".format(str(e))), None)
+                        "Unable to parse the 'values to add' list string Error: {0}".format(str(e))))
 
         details_body = {"watchlist": {"value": param.get("watchlist_id")}, "values": values_to_add}
         ret_val, resp_data = self._make_rest_call(action_result, 'sysAddWatchlistValues', data=details_body)
 
         if (phantom.is_fail(ret_val)):
-            return (action_result.get_status(), None)
+            return (action_result.get_status())
 
         self.debug_print("Completed update, moving to get watchlist")
         self._get_watchlist(param)

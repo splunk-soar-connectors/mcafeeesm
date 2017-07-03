@@ -120,7 +120,7 @@
           "data_path": "action_result.data.*.types",
           "data_type": "string",
           "column_name": "Types",
-          "column_order": 0
+          "column_order": 1
         },
         {
           "data_path": "action_result.status",
@@ -203,20 +203,20 @@
           "data_path": "action_result.data.*.customType.name",
           "data_type": "string",
           "column_name": "Watchlist Type",
-          "column_order": 0
+          "column_order": 1
         },
         {
           "data_path": "action_result.data.*.id.value",
           "data_type": "numeric",
           "column_name": "Watchlist ID",
-          "contains": ["ESM Watchlist ID"],
-          "column_order": 0
+          "contains": ["esm watchlist id"],
+          "column_order": 3
         },
         {
           "data_path": "action_result.data.*.valueCount",
           "data_type": "numeric",
           "column_name": "Number of Entries",
-          "column_order": 0
+          "column_order": 2
         },
         {
           "data_path": "action_result.status",
@@ -243,7 +243,7 @@
     },
     {
       "action": "get events",
-      "description": "Get the events associated with a correlated event ID.",
+      "description": "Get the events associated with a correlated event ID",
       "type": "investigate",
       "identifier": "get_events",
       "read_only": true,
@@ -251,16 +251,16 @@
         "event_id": {
           "data_type": "numeric",
           "order": 0,
-          "description": "Event ID in the McAfee ESM.",
-          "verbose": "Usually a simple integer.",
-          "contains": ["McAfee ESM Event ID"],
+          "description": "Event ID in the McAfee ESM",
+          "verbose": "Usually a simple integer",
+          "contains": ["esm event id"],
           "primary": true,
           "required": true
         },
         "field_list": {
           "data_type": "string",
           "order": 1,
-          "description": "Comma Separated List of event fields to get.",
+          "description": "Comma Separated List of event fields to get",
           "contains": [],
           "required": false
         }
@@ -331,9 +331,9 @@
         "watchlist_id": {
           "data_type": "numeric",
           "order": 0,
-          "description": "Watchlist ID in the McAfee ESM.",
-          "verbose": "Usually a simple integer.",
-          "contains": ["ESM Watchlist ID"],
+          "description": "Watchlist ID in the McAfee ESM",
+          "verbose": "Usually a simple integer",
+          "contains": ["esm watchlist id"],
           "primary": true,
           "required": true
         }
@@ -355,13 +355,13 @@
           "data_path": "action_result.summary.type",
           "data_type": "string",
           "column_name": "Watchlist Type",
-          "column_order": 0
+          "column_order": 1
         },
         {
           "data_path": "action_result.data.*.values",
           "data_type": "string",
           "column_name": "Watchlist Values",
-          "column_order": 0
+          "column_order": 2
         },
         {
           "data_path": "action_result.status",
@@ -396,17 +396,17 @@
         "watchlist_id": {
           "data_type": "numeric",
           "order": 0,
-          "description": "Watchlist ID in the McAfee ESM.",
-          "verbose": "Usually a simple integer.",
-          "contains": ["ESM Watchlist ID"],
+          "description": "Watchlist ID in the McAfee ESM",
+          "verbose": "Usually a simple integer",
+          "contains": ["esm watchlist id"],
           "primary": true,
           "required": true
         },
         "values_to_add": {
           "data_type": "string",
           "order": 0,
-          "description": "Space separated list of values to add to the watchlist. (e.g. '10.10.10.10 192.168.1.4 172.16.32.32')",
-          "verbose": "Values must be appropriate for the type of watchlist to be updated.",
+          "description": "Comma separated list of values to add to the watchlist. (e.g. '10.10.10.10, 192.168.1.4, 172.16.32.32')",
+          "verbose": "Values must be appropriate for the type of watchlist to be updated",
           "required": true
         }
       },
@@ -427,13 +427,13 @@
           "data_path": "action_result.summary.type",
           "data_type": "string",
           "column_name": "Watchlist Type",
-          "column_order": 0
+          "column_order": 1
         },
         {
           "data_path": "action_result.data.*.values",
           "data_type": "string",
           "column_name": "Watchlist Values",
-          "column_order": 0
+          "column_order": 2
         },
         {
           "data_path": "action_result.status",
