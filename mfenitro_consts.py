@@ -58,5 +58,5 @@ NITRO_CEF_CONTAINS = {
         'alertDstMac': ['mac address'],
         'alertSrcMac': ['mac address'],
         'userIDSrc': ['user name'],
-        'alertID': ['McAfee ESM Event ID']}
+        'alertAlertID': ['esm event id']}
 NITRO_POLL_TIME_DEFAULT = "2"

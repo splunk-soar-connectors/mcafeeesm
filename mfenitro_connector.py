@@ -626,10 +626,10 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Failed to create the session. Cannot continue")
             return self.get_status()
 
-        details_body = {"id": {"value": param.get("watchlist_id")}}
+        details_body = {"id": {"value": param["watchlist_id"]}}
         ret_val, details_return_value = self._get_watchlist_details(action_result, data=details_body)
         if not details_return_value:
-            return (action_result.set_status(phantom.APP_ERROR, "Details response does not contain required key 'return'"))
+            return (action_result.set_status(phantom.APP_ERROR, "Could not find watchlist for id: {0}".format(param["watchlist_id"])))
 
         action_result.set_summary({'name': details_return_value["name"]})
         action_result.update_summary({'type': details_return_value["customType"]["name"]})
@@ -690,7 +690,7 @@ class MFENitroConnector(BaseConnector):
         field_list = []
         for field in fields:
             field_list.append({"name": field})
-        data = {"eventId": {"value": param.get("event_id")}, "fields": field_list}
+        data = {"eventId": {"value": param["event_id"]}, "fields": field_list}
         ret_val, resp_data = self._make_rest_call(action_result, GET_EVENTS_URL, data=data)
 
         if (phantom.is_fail(ret_val)):
@@ -724,23 +724,28 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Failed to create the session. Cannot continue")
             return self.get_status()
 
-        if type(param.get("values_to_add")) == list:
-            values_to_add = param.get("values_to_add")
-        elif type(literal_eval(param.get("values_to_add"))) == list:
-            values_to_add = literal_eval(param.get("values_to_add"))
+        try:
+            literal_type = type(literal_eval(param["values_to_add"]))
+        except:
+            literal_type = str
+
+        if type(param["values_to_add"]) == list:
+            values_to_add = param["values_to_add"]
+        elif literal_type == list:
+            values_to_add = literal_eval(param["values_to_add"])
         else:
             try:
-                values_to_add = [x.strip(" '") for x in param.get("values_to_add").split(',')]
-                details_body = {"watchlist": {"value": param.get("watchlist_id")}, "values": values_to_add}
+                values_to_add = [x.strip(" '") for x in param["values_to_add"].split(',')]
+                details_body = {"watchlist": {"value": param["watchlist_id"]}, "values": values_to_add}
             except Exception as e:
                 return (action_result.set_status(phantom.APP_ERROR,
                         "Unable to parse the 'values to add' list string Error: {0}".format(str(e))))
 
-        details_body = {"watchlist": {"value": param.get("watchlist_id")}, "values": values_to_add}
+        details_body = {"watchlist": {"value": param["watchlist_id"]}, "values": values_to_add}
         ret_val, resp_data = self._make_rest_call(action_result, 'sysAddWatchlistValues', data=details_body)
 
         if (phantom.is_fail(ret_val)):
-            return (action_result.get_status())
+            return (action_result.set_status(phantom.APP_ERROR, "Could not update watchlist for id: {0}".format(param["watchlist_id"])))
 
         self.debug_print("Completed update, moving to get watchlist")
         self._get_watchlist(param)

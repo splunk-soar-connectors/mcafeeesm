@@ -219,6 +219,30 @@
           "column_order": 2
         },
         {
+          "data_path": "action_result.data.*.scored",
+          "data_type": "string"
+        },
+        {
+          "data_path": "action_result.data.*.errorMsg",
+          "data_type": "string"
+        },
+        {
+          "data_path": "action_result.data.*.dynamic",
+          "data_type": "string"
+        },
+        {
+          "data_path": "action_result.data.*.source",
+          "data_type": "string"
+        },
+        {
+          "data_path": "action_result.data.*.active",
+          "data_type": "string"
+        },
+        {
+          "data_path": "action_result.data.*.type.name",
+          "data_type": "string"
+        },
+        {
           "data_path": "action_result.status",
           "data_type": "string"
         },
@@ -272,6 +296,20 @@
         "height": 5
       },
       "output": [
+        {
+          "data_path": "action_result.status",
+          "data_type": "string"
+        },
+        {
+          "data_path": "action_result.parameter.field_list",
+          "data_type": "string",
+          "contains": []
+        },
+        {
+          "data_path": "action_result.parameter.event_id",
+          "data_type": "string",
+          "contains": ["esm event id"]
+        },
         {
           "data_path": "action_result.data.*.Rule_msg",
           "data_type": "string",
@@ -346,6 +384,11 @@
       },
       "output": [
         {
+          "data_path": "action_result.parameter.watchlist_id",
+          "data_type": "string",
+          "contains": ["esm watchlist id"]
+        },
+        {
           "data_path": "action_result.summary.name",
           "data_type": "string",
           "column_name": "Watchlist Name",
@@ -417,6 +460,15 @@
         "height": 5
       },
       "output": [
+        {
+          "data_path": "action_result.parameter.values_to_add",
+          "data_type": "string"
+        },
+        {
+          "data_path": "action_result.parameter.watchlist_id",
+          "data_type": "string",
+          "contains": ["esm watchlist id"]
+        },
         {
           "data_path": "action_result.summary.name",
           "data_type": "string",
