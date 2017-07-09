@@ -162,7 +162,7 @@ class MFENitroConnector(BaseConnector):
 
     def finalize(self):
 
-        self.save_state(self._state)
+        self.save_state(_self._state)
         self._delete_session()
 
         return phantom.APP_SUCCESS
