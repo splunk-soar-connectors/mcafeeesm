@@ -975,7 +975,7 @@ class MFENitroConnector(BaseConnector):
         """
         rule_msg = event_data.get('Rule.msg', 'Unknown.Rule.Msg')
         first_time = event_data.get('Alert.FirstTime', '')
-        sdi = "{0}{1}{2}".format(event_data.get('Alert.ID', ''), rule_msg, first_time)
+        sdi = "{0}{1}{2}".format(event_data.get('Alert.ID', ''), rule_msg.encode('utf8'), first_time)
 
         container.update(_container_common)
         container['source_data_identifier'] = sdi
