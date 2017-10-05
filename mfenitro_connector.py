@@ -596,12 +596,18 @@ class MFENitroConnector(BaseConnector):
         if not details_return_value:
             return (action_result.set_status(phantom.APP_ERROR, "Could not find watchlist for id: {0}".format(param["watchlist_id"])))
 
-        action_result.set_summary({'name': details_return_value["name"]})
-        action_result.update_summary({'type': details_return_value["customType"]["name"]})
+        try:
+            action_result.set_summary({'name': details_return_value["name"]})
+            action_result.update_summary({'type': details_return_value["customType"]["name"]})
+        except:
+            return (action_result.set_status(phantom.APP_ERROR, "Could not update summary when getting watchlist id: {0}".format(param["watchlist_id"])))
 
         # Get the file id from the details just returned in order to query for the watchlist values
-        values_file_id = details_return_value["valueFile"]["id"]
-        values_body = {"file": {"id": values_file_id}}
+        try:
+            values_file_id = details_return_value["valueFile"]["id"]
+            values_body = {"file": {"id": values_file_id}}
+        except:
+            return (action_result.set_status(phantom.APP_ERROR, "Could not get the fild id from the details for watchlist id: {0}".format(param["watchlist_id"])))
 
         # The hardcoded value for 50,000 bytes read below may need to be a parameter in the action for customization
         ret_val, resp_data = self._make_rest_call(action_result, 'sysGetWatchlistValues?pos=0&count=50000', data=values_body)
@@ -664,9 +670,11 @@ class MFENitroConnector(BaseConnector):
         fields = ["Rule_msg" if x == "Rule.msg" else x for x in fields]
 
         if resp_data is not None:
-            data_to_add = {k: v for k, v in zip(fields, resp_data["return"][0]["values"])}
-            action_result.add_data(data_to_add)
-
+            try:
+                data_to_add = {k: v for k, v in zip(fields, resp_data["return"][0]["values"])}
+                action_result.add_data(data_to_add)
+            except:
+                return action_result.set_status(phantom.APP_ERROR, "Unable to add field values to action data.")
         # TODO - need to finish out the function here. Add in the ability to
         # set polling to do get all correlated events only, then get the source
         # events and add them as artifacts to the container.
