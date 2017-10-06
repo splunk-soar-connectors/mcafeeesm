@@ -6,8 +6,8 @@
   "publisher": "Phantom",
   "type": "siem",
   "main_module": "mfenitro_connector.pyc",
-    "app_version": "1.0.63",
-    "utctime_updated": "2017-08-10T00:27:33.000000Z",
+  "app_version": "1.0.64",
+  "utctime_updated": "2017-10-06T01:43:41.000000Z",
   "package_name": "phantom_mfeesm",
   "product_vendor": "McAfee",
   "product_name": "McAfee ESM",
@@ -16,71 +16,71 @@
   "logo": "mcafee.png",
   "license": "Copyright (c) Phantom Cyber Corporation 2016-2017",
   "configuration": {
-      "base_url": {
-          "data_type": "string",
-          "description": "Device URL, e.g. https://myesm.enterprise.com",
-          "order": 0,
-          "required": true
-      },
-      "verify_server_cert": {
-          "data_type": "boolean",
-          "description": "Verify server certificate",
-          "required": true,
-          "order": 1,
-          "default": false
-      },
-      "username": {
-          "data_type": "string",
-          "description": "User name",
-          "order": 2,
-          "required": true 
-      },
-      "password": {
-          "data_type": "password",
-          "description": "Password",
-          "order": 3,
-          "required": true
-      },
-      "filters": {
-          "data_type": "string",
-          "description": "List of filters (JSON)",
-          "order": 4,
-          "required": false
-      },
-      "max_containers": {
-          "data_type": "numeric",
-          "description": "Maximum events for scheduled polling",
-          "order": 5,
-          "default": 100,
-          "required": true
-      },
-      "first_run_max_events": {
-          "data_type": "numeric",
-          "order": 6,
-          "description": "Maximum events to poll first time",
-          "default": 2000,
-          "required": true
-      },
-      "poll_time": {
-          "data_type": "numeric",
-          "order": 7,
-          "description": "Ingest events in last N minutes (POLL NOW and First Run)",
-          "default": 2,
-          "required": false
-      },
-      "query_timeout": {
-          "data_type": "numeric",
-          "order": 8,
-          "description": "Max Time to wait for query to finish (seconds)",
-          "default": 20,
-          "required": false
-      },
-      "timezone": {
-        "data_type": "timezone",
-        "order": 9,
-        "description": "Timezone configured on device",
-        "required": true
-      }
+    "base_url": {
+      "data_type": "string",
+      "description": "Device URL, e.g. https://myesm.enterprise.com",
+      "order": 0,
+      "required": true
+    },
+    "verify_server_cert": {
+      "data_type": "boolean",
+      "description": "Verify server certificate",
+      "required": true,
+      "order": 1,
+      "default": false
+    },
+    "username": {
+      "data_type": "string",
+      "description": "User name",
+      "order": 2,
+      "required": true
+    },
+    "password": {
+      "data_type": "password",
+      "description": "Password",
+      "order": 3,
+      "required": true
+    },
+    "filters": {
+      "data_type": "string",
+      "description": "List of filters (JSON)",
+      "order": 4,
+      "required": false
+    },
+    "max_containers": {
+      "data_type": "numeric",
+      "description": "Maximum events for scheduled polling",
+      "order": 5,
+      "default": 100,
+      "required": true
+    },
+    "first_run_max_events": {
+      "data_type": "numeric",
+      "order": 6,
+      "description": "Maximum events to poll first time",
+      "default": 2000,
+      "required": true
+    },
+    "poll_time": {
+      "data_type": "numeric",
+      "order": 7,
+      "description": "Ingest events in last N minutes (POLL NOW and First Run)",
+      "default": 2,
+      "required": false
+    },
+    "query_timeout": {
+      "data_type": "numeric",
+      "order": 8,
+      "description": "Max Time to wait for query to finish (seconds)",
+      "default": 20,
+      "required": false
+    },
+    "timezone": {
+      "data_type": "timezone",
+      "order": 9,
+      "description": "Timezone configured on device",
+      "required": true
+    }
   },
   "actions": [
     {
@@ -91,9 +91,7 @@
       "read_only": true,
       "output": [],
       "versions": "EQ(*)",
-      "parameters": {
-      },
-      "versions": "EQ(*)"
+      "parameters": {}
     },
     {
       "action": "list fields",
@@ -101,8 +99,7 @@
       "type": "generic",
       "identifier": "list_fields",
       "read_only": true,
-      "parameters": {
-      },
+      "parameters": {},
       "render": {
         "width": 12,
         "title": "List Fields",
@@ -143,7 +140,7 @@
           "data_type": "numeric"
         }
       ],
-      "versions":"EQ(*)"
+      "versions": "EQ(*)"
     },
     {
       "action": "on poll",
@@ -176,7 +173,7 @@
         }
       },
       "output": [],
-      "versions":"EQ(*)"
+      "versions": "EQ(*)"
     },
     {
       "action": "list watchlists",
@@ -184,8 +181,7 @@
       "type": "investigate",
       "identifier": "list_watchlists",
       "read_only": true,
-      "parameters": {
-      },
+      "parameters": {},
       "render": {
         "width": 12,
         "title": "List Watchlists",
@@ -209,7 +205,9 @@
           "data_path": "action_result.data.*.id.value",
           "data_type": "numeric",
           "column_name": "Watchlist ID",
-          "contains": ["esm watchlist id"],
+          "contains": [
+            "esm watchlist id"
+          ],
           "column_order": 3
         },
         {
@@ -263,7 +261,7 @@
           "data_type": "numeric"
         }
       ],
-      "versions":"EQ(*)"
+      "versions": "EQ(*)"
     },
     {
       "action": "get events",
@@ -277,7 +275,9 @@
           "order": 0,
           "description": "Event ID in the McAfee ESM",
           "verbose": "Usually a simple integer",
-          "contains": ["esm event id"],
+          "contains": [
+            "esm event id"
+          ],
           "primary": true,
           "required": true
         },
@@ -308,7 +308,9 @@
         {
           "data_path": "action_result.parameter.event_id",
           "data_type": "string",
-          "contains": ["esm event id"]
+          "contains": [
+            "esm event id"
+          ]
         },
         {
           "data_path": "action_result.data.*.Rule_msg",
@@ -357,7 +359,7 @@
           "data_type": "numeric"
         }
       ],
-      "versions":"EQ(*)"
+      "versions": "EQ(*)"
     },
     {
       "action": "get watchlist",
@@ -371,7 +373,9 @@
           "order": 0,
           "description": "Watchlist ID in the McAfee ESM",
           "verbose": "Usually a simple integer",
-          "contains": ["esm watchlist id"],
+          "contains": [
+            "esm watchlist id"
+          ],
           "primary": true,
           "required": true
         }
@@ -386,7 +390,9 @@
         {
           "data_path": "action_result.parameter.watchlist_id",
           "data_type": "string",
-          "contains": ["esm watchlist id"]
+          "contains": [
+            "esm watchlist id"
+          ]
         },
         {
           "data_path": "action_result.summary.name",
@@ -427,7 +433,7 @@
           "data_type": "numeric"
         }
       ],
-      "versions":"EQ(*)"
+      "versions": "EQ(*)"
     },
     {
       "action": "update watchlist",
@@ -441,7 +447,9 @@
           "order": 0,
           "description": "Watchlist ID in the McAfee ESM",
           "verbose": "Usually a simple integer",
-          "contains": ["esm watchlist id"],
+          "contains": [
+            "esm watchlist id"
+          ],
           "primary": true,
           "required": true
         },
@@ -467,7 +475,9 @@
         {
           "data_path": "action_result.parameter.watchlist_id",
           "data_type": "string",
-          "contains": ["esm watchlist id"]
+          "contains": [
+            "esm watchlist id"
+          ]
         },
         {
           "data_path": "action_result.summary.name",
@@ -508,8 +518,7 @@
           "data_type": "numeric"
         }
       ],
-      "versions":"EQ(*)"
+      "versions": "EQ(*)"
     }
   ]
 }
-
