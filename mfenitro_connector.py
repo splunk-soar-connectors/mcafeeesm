@@ -26,6 +26,7 @@ import json
 from pytz import timezone
 import pytz
 from copy import deepcopy
+from ast import literal_eval
 
 import request_fields
 
@@ -47,6 +48,10 @@ class MFENitroConnector(BaseConnector):
     ACTION_ID_TEST_CONNECTIVITY = "test_asset_connectivity"
     ACTION_ID_ON_POLL = "on_poll"
     ACTION_ID_LIST_FIELDS = "list_fields"
+    ACTION_ID_LIST_WATCHLISTS = "list_watchlists"
+    ACTION_ID_GET_WATCHLIST = "get_watchlist"
+    ACTION_ID_UPDATE_WATCHLIST = "update_watchlist"
+    ACTION_ID_GET_EVENTS = "get_events"
 
     def __init__(self):
 
@@ -99,6 +104,8 @@ class MFENitroConnector(BaseConnector):
         try:
             resp_json = result.json()
         except Exception as e:
+            if endpoint == 'sysAddWatchlistValues':
+                return (phantom.APP_SUCCESS, None)
             return (action_result.set_status(phantom.APP_ERROR, "Error converting response to json"), None)
 
         return (phantom.APP_SUCCESS, resp_json)
@@ -519,6 +526,205 @@ class MFENitroConnector(BaseConnector):
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
+    def _list_watchlists(self, param):
+
+        config = self.get_config()
+        action_result = self.add_action_result(ActionResult(dict(param)))
+        ret_val = self._validate_my_config(action_result)
+
+        if (phantom.is_fail(ret_val)):
+            return action_result.get_status()
+
+        # create a session to start the action
+        ret_val = self._create_session(config, param, action_result)
+
+        if (phantom.is_fail(ret_val)):
+            self.save_progress("Failed to create the session. Cannot continue")
+            return self.get_status()
+
+        ret_val, resp_data = self._make_rest_call(action_result, 'sysGetWatchlists', method="get")
+
+        if (phantom.is_fail(ret_val)):
+            return (action_result.get_status(), None)
+
+        return_value = resp_data.get('return')
+
+        if (not return_value):
+            return (action_result.set_status(phantom.APP_ERROR, "Response does not contain required key 'return'"))
+
+        [action_result.add_data(x) for x in return_value]
+
+        action_result.set_summary({'total_fields': len(return_value)})
+
+        return action_result.set_status(phantom.APP_SUCCESS)
+
+    def _get_watchlist_details(self, action_result, data):
+
+        ret_val, resp_data = self._make_rest_call(action_result, 'sysGetWatchlistDetails', data=data)
+
+        if (phantom.is_fail(ret_val)):
+            return (action_result.get_status(), None)
+
+        return_value = resp_data.get('return')
+
+        if (not return_value):
+            return (action_result.set_status(phantom.APP_ERROR, "Response does not contain required key 'return'"), None)
+
+        return (phantom.APP_SUCCESS, return_value)
+
+    def _get_watchlist(self, param):
+
+        # This will be a two-part action -
+        #     1. Get the watchlist details with 'sysGetWatchlistDetails'
+        #     2. Get the watchlist values with 'sysGetWatchlistValues?pos=0&count=2500'
+        config = self.get_config()
+        action_result = self.add_action_result(ActionResult(dict(param)))
+        ret_val = self._validate_my_config(action_result)
+
+        if (phantom.is_fail(ret_val)):
+            return action_result.get_status()
+
+        # create a session to start the action
+        ret_val = self._create_session(config, param, action_result)
+
+        if (phantom.is_fail(ret_val)):
+            self.save_progress("Failed to create the session. Cannot continue")
+            return self.get_status()
+
+        details_body = {"id": {"value": param["watchlist_id"]}}
+        ret_val, details_return_value = self._get_watchlist_details(action_result, data=details_body)
+        if not details_return_value:
+            return (action_result.set_status(phantom.APP_ERROR, "Could not find watchlist for id: {0}".format(param["watchlist_id"])))
+
+        try:
+            action_result.set_summary({'name': details_return_value["name"]})
+            action_result.update_summary({'type': details_return_value["customType"]["name"]})
+        except:
+            return (action_result.set_status(phantom.APP_ERROR, "Could not update summary when getting watchlist id: {0}".format(param["watchlist_id"])))
+
+        # Get the file id from the details just returned in order to query for the watchlist values
+        try:
+            values_file_id = details_return_value["valueFile"]["id"]
+            values_body = {"file": {"id": values_file_id}}
+        except:
+            return (action_result.set_status(phantom.APP_ERROR, "Could not get the fild id from the details for watchlist id: {0}".format(param["watchlist_id"])))
+
+        # The hardcoded value for 50,000 bytes read below may need to be a parameter in the action for customization
+        ret_val, resp_data = self._make_rest_call(action_result, 'sysGetWatchlistValues?pos=0&count=50000', data=values_body)
+
+        if (phantom.is_fail(ret_val)):
+            return (action_result.get_status(), None)
+
+        values_return_value = resp_data.get('return')
+
+        if (not values_return_value):
+            return (action_result.set_status(phantom.APP_ERROR, "Values response does not contain required key 'return'"))
+
+        if values_return_value:
+            value_list = values_return_value["data"].splitlines()
+            value_dict_list = []
+            for x in range(len(value_list)):
+                value_dict_list.append({"values": value_list[x]})
+            [action_result.add_data(x) for x in value_dict_list]
+            # details_return_value["values"] = values_return_value["data"].splitlines()
+            # [action_result.add_data(x) for x in details_return_value["values"]]
+            # action_result.add_data(details_return_value)
+            action_result.update_summary({'total_values': len(value_dict_list)})
+
+        return action_result.set_status(phantom.APP_SUCCESS)
+
+    def _get_events(self, param):
+
+        config = self.get_config()
+        action_result = self.add_action_result(ActionResult(dict(param)))
+        ret_val = self._validate_my_config(action_result)
+
+        if (phantom.is_fail(ret_val)):
+            return action_result.get_status()
+
+        # create a session to start the action
+        ret_val = self._create_session(config, param, action_result)
+
+        if (phantom.is_fail(ret_val)):
+            self.save_progress("Failed to create the session. Cannot continue")
+            return self.get_status()
+
+        fields = param.get("field_list", DEFAULT_FIELD_LIST)
+        if type(fields) is list:
+            fields = fields
+        elif type(fields) is str:
+            # fields = phantom.get_list_from_string(fields)
+            fields = [x.strip(" '") for x in fields.split(',')]
+        else:
+            return action_result.set_status(phantom.APP_ERROR, "Invalid field list supplied.")
+
+        field_list = []
+        for field in fields:
+            field_list.append({"name": field})
+        data = {"eventId": {"value": param["event_id"]}, "fields": field_list}
+        ret_val, resp_data = self._make_rest_call(action_result, GET_EVENTS_URL, data=data)
+
+        if (phantom.is_fail(ret_val)):
+            return (action_result.get_status())
+
+        fields = ["Rule_msg" if x == "Rule.msg" else x for x in fields]
+
+        if resp_data is not None:
+            try:
+                data_to_add = {k: v for k, v in zip(fields, resp_data["return"][0]["values"])}
+                action_result.add_data(data_to_add)
+            except:
+                return action_result.set_status(phantom.APP_ERROR, "Unable to add field values to action data.")
+        # TODO - need to finish out the function here. Add in the ability to
+        # set polling to do get all correlated events only, then get the source
+        # events and add them as artifacts to the container.
+
+        return action_result.set_status(phantom.APP_SUCCESS)
+
+    def _update_watchlist(self, param):
+
+        config = self.get_config()
+        action_result = self.add_action_result(ActionResult(dict(param)))
+        ret_val = self._validate_my_config(action_result)
+
+        if (phantom.is_fail(ret_val)):
+            return action_result.get_status()
+
+        # create a session to start the action
+        ret_val = self._create_session(config, param, action_result)
+
+        if (phantom.is_fail(ret_val)):
+            self.save_progress("Failed to create the session. Cannot continue")
+            return self.get_status()
+
+        try:
+            literal_type = type(literal_eval(param["values_to_add"]))
+        except:
+            literal_type = str
+
+        if type(param["values_to_add"]) == list:
+            values_to_add = param["values_to_add"]
+        elif literal_type == list:
+            values_to_add = literal_eval(param["values_to_add"])
+        else:
+            try:
+                values_to_add = [x.strip(" '") for x in param["values_to_add"].split(',')]
+                details_body = {"watchlist": {"value": param["watchlist_id"]}, "values": values_to_add}
+            except Exception as e:
+                return (action_result.set_status(phantom.APP_ERROR,
+                        "Unable to parse the 'values to add' list string Error: {0}".format(str(e))))
+
+        details_body = {"watchlist": {"value": param["watchlist_id"]}, "values": values_to_add}
+        ret_val, resp_data = self._make_rest_call(action_result, 'sysAddWatchlistValues', data=details_body)
+
+        if (phantom.is_fail(ret_val)):
+            return (action_result.set_status(phantom.APP_ERROR, "Could not update watchlist for id: {0}".format(param["watchlist_id"])))
+
+        self.debug_print("Completed update, moving to get watchlist")
+        self._get_watchlist(param)
+
+        return action_result.set_status(phantom.APP_SUCCESS)
+
     def _create_request_blocks(self, query_dict, filter_dict):
 
         """This function could be implemented in fewer + complicated + tough_to_read lines of code
@@ -742,7 +948,7 @@ class MFENitroConnector(BaseConnector):
         """
         rule_msg = event_data.get('Rule.msg', 'Unknown.Rule.Msg')
         first_time = event_data.get('Alert.FirstTime', '')
-        sdi = "{0}{1}{2}".format(event_data.get('Alert.ID', ''), rule_msg, first_time)
+        sdi = "{0}{1}{2}".format(event_data.get('Alert.ID', ''), rule_msg.encode('utf8'), first_time)
 
         container.update(_container_common)
         container['source_data_identifier'] = sdi
@@ -787,6 +993,14 @@ class MFENitroConnector(BaseConnector):
             ret_val = self._on_poll(param)
         elif (action_id == self.ACTION_ID_LIST_FIELDS):
             ret_val = self._list_fields(param)
+        elif (action_id == self.ACTION_ID_LIST_WATCHLISTS):
+            ret_val = self._list_watchlists(param)
+        elif (action_id == self.ACTION_ID_GET_WATCHLIST):
+            ret_val = self._get_watchlist(param)
+        elif (action_id == self.ACTION_ID_UPDATE_WATCHLIST):
+            ret_val = self._update_watchlist(param)
+        elif (action_id == self.ACTION_ID_GET_EVENTS):
+            ret_val = self._get_events(param)
 
         return ret_val
 
