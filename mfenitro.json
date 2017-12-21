@@ -1,183 +1,180 @@
 {
-  "appid": "1d20c51a-7f60-465b-a8e3-fc02967bec4d",
-  "deprecated_appid": "161ce6ea-c214-48e9-8bd9-56b73dffa7da",
-  "name": "McAfee ESM",
-  "description": "This app ingests data from a McAfee ESM device. Each event is parsed into a container and various event characteristics like the Rule, Signature and actionName are ingested into the event artifact.",
-  "publisher": "Phantom",
-  "type": "siem",
-  "main_module": "mfenitro_connector.pyc",
+    "appid": "1d20c51a-7f60-465b-a8e3-fc02967bec4d",
+    "deprecated_appid": "161ce6ea-c214-48e9-8bd9-56b73dffa7da",
+    "name": "McAfee ESM",
+    "description": "This app ingests data from a McAfee ESM device. Each event is parsed into a container and various event characteristics like the Rule, Signature and actionName are ingested into the event artifact.",
+    "publisher": "Phantom",
+    "type": "siem",
+    "main_module": "mfenitro_connector.pyc",
     "app_version": "1.0.63",
     "utctime_updated": "2017-08-10T00:27:33.000000Z",
-  "package_name": "phantom_mfeesm",
-  "product_vendor": "McAfee",
-  "product_name": "McAfee ESM",
-  "product_version_regex": ".*",
-  "min_phantom_version": "3.0.190",
-  "logo": "mcafee.png",
-  "license": "Copyright (c) Phantom Cyber Corporation 2016-2017",
-  "configuration": {
-      "base_url": {
-          "data_type": "string",
-          "description": "Device URL, e.g. https://myesm.enterprise.com",
-          "order": 0,
-          "required": true
-      },
-      "verify_server_cert": {
-          "data_type": "boolean",
-          "description": "Verify server certificate",
-          "required": true,
-          "order": 1,
-          "default": false
-      },
-      "username": {
-          "data_type": "string",
-          "description": "User name",
-          "order": 2,
-          "required": true 
-      },
-      "password": {
-          "data_type": "password",
-          "description": "Password",
-          "order": 3,
-          "required": true
-      },
-      "filters": {
-          "data_type": "string",
-          "description": "List of filters (JSON)",
-          "order": 4,
-          "required": false
-      },
-      "max_containers": {
-          "data_type": "numeric",
-          "description": "Maximum events for scheduled polling",
-          "order": 5,
-          "default": 100,
-          "required": true
-      },
-      "first_run_max_events": {
-          "data_type": "numeric",
-          "order": 6,
-          "description": "Maximum events to poll first time",
-          "default": 2000,
-          "required": true
-      },
-      "poll_time": {
-          "data_type": "numeric",
-          "order": 7,
-          "description": "Ingest events in last N minutes (POLL NOW and First Run)",
-          "default": 2,
-          "required": false
-      },
-      "query_timeout": {
-          "data_type": "numeric",
-          "order": 8,
-          "description": "Max Time to wait for query to finish (seconds)",
-          "default": 20,
-          "required": false
-      },
-      "timezone": {
-        "data_type": "timezone",
-        "order": 9,
-        "description": "Timezone configured on device",
-        "required": true
-      }
-  },
-  "actions": [
-    {
-      "action": "test connectivity",
-      "description": "Validates the credentials",
-      "type": "test",
-      "identifier": "test_asset_connectivity",
-      "read_only": true,
-      "output": [],
-      "versions": "EQ(*)",
-      "parameters": {
-      },
-      "versions": "EQ(*)"
-    },
-    {
-      "action": "list fields",
-      "description": "List the fields available to be used in filters",
-      "type": "generic",
-      "identifier": "list_fields",
-      "read_only": true,
-      "parameters": {
-      },
-      "render": {
-        "width": 12,
-        "title": "List Fields",
-        "type": "table",
-        "height": 5
-      },
-      "output": [
-        {
-          "data_path": "action_result.data.*.name",
-          "data_type": "string",
-          "column_name": "Field Name",
-          "column_order": 0
+    "package_name": "phantom_mfeesm",
+    "product_vendor": "McAfee",
+    "product_name": "McAfee ESM",
+    "product_version_regex": ".*",
+    "min_phantom_version": "3.0.190",
+    "logo": "logo_mcafee.svg",
+    "logo_dark": "logo_mcafee_dark.svg",
+    "license": "Copyright (c) Phantom Cyber Corporation 2016-2017",
+    "configuration": {
+        "base_url": {
+            "data_type": "string",
+            "description": "Device URL, e.g. https://myesm.enterprise.com",
+            "order": 0,
+            "required": true
         },
-        {
-          "data_path": "action_result.data.*.types",
-          "data_type": "string",
-          "column_name": "Types",
-          "column_order": 0
+        "verify_server_cert": {
+            "data_type": "boolean",
+            "description": "Verify server certificate",
+            "required": true,
+            "order": 1,
+            "default": false
         },
-        {
-          "data_path": "action_result.status",
-          "data_type": "string"
+        "username": {
+            "data_type": "string",
+            "description": "User name",
+            "order": 2,
+            "required": true
         },
-        {
-          "data_path": "action_result.message",
-          "data_type": "string"
+        "password": {
+            "data_type": "password",
+            "description": "Password",
+            "order": 3,
+            "required": true
         },
-        {
-          "data_path": "action_result.summary.total_fields",
-          "data_type": "numeric"
+        "filters": {
+            "data_type": "string",
+            "description": "List of filters (JSON)",
+            "order": 4,
+            "required": false
         },
-        {
-          "data_path": "summary.total_objects",
-          "data_type": "numeric"
+        "max_containers": {
+            "data_type": "numeric",
+            "description": "Maximum events for scheduled polling",
+            "order": 5,
+            "default": 100,
+            "required": true
         },
-        {
-          "data_path": "summary.total_objects_successful",
-          "data_type": "numeric"
+        "first_run_max_events": {
+            "data_type": "numeric",
+            "order": 6,
+            "description": "Maximum events to poll first time",
+            "default": 2000,
+            "required": true
+        },
+        "poll_time": {
+            "data_type": "numeric",
+            "order": 7,
+            "description": "Ingest events in last N minutes (POLL NOW and First Run)",
+            "default": 2,
+            "required": false
+        },
+        "query_timeout": {
+            "data_type": "numeric",
+            "order": 8,
+            "description": "Max Time to wait for query to finish (seconds)",
+            "default": 20,
+            "required": false
+        },
+        "timezone": {
+            "data_type": "timezone",
+            "order": 9,
+            "description": "Timezone configured on device",
+            "required": true
         }
-      ],
-      "versions":"EQ(*)"
     },
-    {
-      "action": "on poll",
-      "description": "Callback action for the on_poll ingest functionality.",
-      "type": "ingest",
-      "identifier": "on_poll",
-      "read_only": true,
-      "parameters": {
-        "start_time": {
-          "data_type": "numeric",
-          "description": "Start of time range, in epoch time (milliseconds)",
-          "verbose": "If not specified, the default is past 10 days"
+    "actions": [
+        {
+            "action": "test connectivity",
+            "description": "Validates the credentials",
+            "type": "test",
+            "identifier": "test_asset_connectivity",
+            "read_only": true,
+            "output": [],
+            "versions": "EQ(*)",
+            "parameters": {}
         },
-        "end_time": {
-          "data_type": "numeric",
-          "description": "End of time range, in epoch time (milliseconds)",
-          "verbose": "If not specified, the default is now"
+        {
+            "action": "list fields",
+            "description": "List the fields available to be used in filters",
+            "type": "generic",
+            "identifier": "list_fields",
+            "read_only": true,
+            "parameters": {},
+            "render": {
+                "width": 12,
+                "title": "List Fields",
+                "type": "table",
+                "height": 5
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.name",
+                    "data_type": "string",
+                    "column_name": "Field Name",
+                    "column_order": 0
+                },
+                {
+                    "data_path": "action_result.data.*.types",
+                    "data_type": "string",
+                    "column_name": "Types",
+                    "column_order": 0
+                },
+                {
+                    "data_path": "action_result.summary.total_fields",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "versions": "EQ(*)"
         },
-        "container_count": {
-          "data_type": "numeric",
-          "description": "Maximum number of container records to query for",
-          "required": true,
-          "value": 100
-        },
-        "artifact_count": {
-          "data_type": "numeric",
-          "description": "Maximum number of artifact records to query for",
-          "required": true,
-          "value": 100
+        {
+            "action": "on poll",
+            "description": "Callback action for the on_poll ingest functionality.",
+            "type": "ingest",
+            "identifier": "on_poll",
+            "read_only": true,
+            "parameters": {
+                "start_time": {
+                    "data_type": "numeric",
+                    "description": "Start of time range, in epoch time (milliseconds)",
+                    "verbose": "If not specified, the default is past 10 days"
+                },
+                "end_time": {
+                    "data_type": "numeric",
+                    "description": "End of time range, in epoch time (milliseconds)",
+                    "verbose": "If not specified, the default is now"
+                },
+                "container_count": {
+                    "data_type": "numeric",
+                    "description": "Maximum number of container records to query for",
+                    "required": true,
+                    "value": 100
+                },
+                "artifact_count": {
+                    "data_type": "numeric",
+                    "description": "Maximum number of artifact records to query for",
+                    "required": true,
+                    "value": 100
+                }
+            },
+            "output": [],
+            "versions": "EQ(*)"
         }
-      },
-      "output": [],
-      "versions":"EQ(*)"
-    }
-  ]
+    ]
 }
-
