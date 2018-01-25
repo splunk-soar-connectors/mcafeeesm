@@ -15,7 +15,7 @@
     "min_phantom_version": "3.0.190",
     "logo": "logo_mcafee.svg",
     "logo_dark": "logo_mcafee_dark.svg",
-    "license": "Copyright (c) Phantom Cyber Corporation 2016-2017",
+    "license": "Copyright (c) Phantom Cyber Corporation, 2016-2018",
     "configuration": {
         "base_url": {
             "data_type": "string",
