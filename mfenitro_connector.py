@@ -1,34 +1,31 @@
 # --
 # File: mfenitro_connector.py
 #
-# Copyright (c) Phantom Cyber Corporation, 2016-2018
+# Copyright (c) 2016-2018 Splunk Inc.
 #
-# This unpublished material is proprietary to Phantom Cyber.
-# All rights reserved. The methods and
-# techniques described herein are considered trade secrets
-# and/or confidential. Reproduction or distribution, in whole
-# or in part, is forbidden except by express written permission
-# of Phantom Cyber.
-#
+# SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
+# without a valid written license from Splunk Inc. is PROHIBITED.
 # --
+
 # Phantom App imports
 
 import phantom.app as phantom
 
-from phantom.base_connector import BaseConnector
 from phantom.action_result import ActionResult
+from phantom.base_connector import BaseConnector
+
 import re
 import time
-from mfenitro_consts import *
-from datetime import datetime, timedelta
-import requests
 import json
-from pytz import timezone
 import pytz
+import base64
+import requests
 from copy import deepcopy
 from ast import literal_eval
+from datetime import datetime, timedelta
 
 import request_fields
+from mfenitro_consts import *
 
 _container_common = {
     "description": "Container added by Phantom McAfee ESM App",
@@ -46,25 +43,98 @@ _artifact_common = {
 class MFENitroConnector(BaseConnector):
 
     ACTION_ID_TEST_CONNECTIVITY = "test_asset_connectivity"
-    ACTION_ID_ON_POLL = "on_poll"
-    ACTION_ID_LIST_FIELDS = "list_fields"
+    ACTION_ID_UPDATE_WATCHLIST = "update_watchlist"
     ACTION_ID_LIST_WATCHLISTS = "list_watchlists"
     ACTION_ID_GET_WATCHLIST = "get_watchlist"
-    ACTION_ID_UPDATE_WATCHLIST = "update_watchlist"
+    ACTION_ID_LIST_FIELDS = "list_fields"
     ACTION_ID_GET_EVENTS = "get_events"
+    ACTION_ID_ON_POLL = "on_poll"
 
     def __init__(self):
 
         super(MFENitroConnector, self).__init__()
-        self._state = {}
+
+        self._state = None
+        self._verify = None
+        self._session = None
         self._headers = None
+        self._username = None
+        self._password = None
+        self._base_url = None
+
+    def initialize(self):
+
+        config = self.get_config()
+
+        self._state = self.load_state()
+
+        self._ingest_type = config.get('ingest_data', 'Events')
+        self._version = config.get('version', '9')
+        self._verify = config['verify_server_cert']
+        self._base_url = NITRO_BASE_URL.format(config["base_url"].strip('/'))
+
+        if self._version == '9':
+            self._username = config['username']
+            self._password = config['password']
+        else:
+            self._base_url += 'v2/'
+            self._username = base64.b64encode(config['username'])
+            self._password = base64.b64encode(config['password'])
+
+        return phantom.APP_SUCCESS
+
+    def finalize(self):
+
+        self.save_state(self._state)
+
+        if self._version == '9':
+            self._delete_session()
+
+        return phantom.APP_SUCCESS
+
+    def _create_session(self, action_result):
+
+        self.save_progress("Creating Session for ESM version {0}".format(self._version))
+
+        self._session = requests.Session()
+
+        login_url = self._base_url + 'login'
+
+        # login using the credentials
+        try:
+            if self._version == '9':
+                login_response = self._session.post(login_url, auth=(self._username, self._password), verify=self._verify)
+            elif self._version == '10':
+                body = {'username': self._username, 'password': self._password, 'locale': 'en_US'}
+                login_response = self._session.post(login_url, json=body, verify=self._verify)
+        except Exception as e:
+            return action_result.set_status(phantom.APP_ERROR, "Error creating session", e)
+
+        if not 200 <= login_response.status_code < 300:
+            return self._handle_error_response(login_response, action_result)
+
+        if self._version == '10':
+            if 'Xsrf-Token' not in login_response.headers:
+                return action_result.set_status(phantom.APP_ERROR, "Error creating session: Xsrf-Token not found in login response.")
+            self._headers = {'X-Xsrf-Token': login_response.headers['Xsrf-Token']}
+
+        return phantom.APP_SUCCESS
+
+    def _delete_session(self):
+
+        ret_val, ack_data = self._make_rest_call(ActionResult(), "logout", method="delete")
+
+        if phantom.is_fail(ret_val):
+            self.save_progress("Unable to logout, non-fatal, ignoring")
+
+        return ret_val
 
     def _handle_error_response(self, response, result):
 
         data = response.text
 
         if ('application/json' in response.headers.get('Content-Type')) and (data):
-            data = data.replace('{', '[').replace('}', ']')
+            data = data.replace('{', '{{').replace('}', '}}')
 
         message = "Status Code: {0}. Data: {1}".format(response.status_code, data if data else 'Not Specified')
 
@@ -72,75 +142,61 @@ class MFENitroConnector(BaseConnector):
 
         return result.set_status(phantom.APP_ERROR, message)
 
-    def _make_rest_call(self, action_result, endpoint, data=None, method="post"):
+    def _make_rest_call(self, action_result, endpoint, data=None, params=None, method="post"):
 
-        config = self.get_config()
-        base_url = NITRO_BASE_URL % config["base_url"]
-
-        request_func = getattr(requests, method)
+        request_func = getattr(self._session, method)
 
         # handle the error in case the caller specified a non-existant method
-        if (not request_func):
-            return (action_result.set_status(phantom.APP_ERROR, "API Unsupported method: {0}".format(method)), None)
+        if not request_func:
+            return action_result.set_status(phantom.APP_ERROR, "API Unsupported method: {0}".format(method)), None
 
-        """
-        headers = dict(self._headers)
-        if (method == 'delete'):
-            del(headers['Content-Type'])
-        """
+        headers = None
+        if self._version == '10':
+            headers = self._headers
 
         try:
-            result = request_func(base_url + endpoint, json=data if data else None, headers=self._headers, verify=config["verify_server_cert"])
+            result = request_func(
+                    self._base_url + endpoint,
+                    json=data,
+                    params=params,
+                    headers=headers,
+                    verify=self._verify)
         except Exception as e:
-            return (action_result.set_status(phantom.APP_ERROR, "Error connecting to Device: {0}".format(e)), None)
+            return action_result.set_status(phantom.APP_ERROR, "Error connecting to Device: {0}".format(e)), None
 
         # The only status code that is success for posts is 200
         if result.status_code != 200:
-            return (self._handle_error_response(result, action_result), None)
+            return self._handle_error_response(result, action_result), None
 
         if method == "delete":
-            return (phantom.APP_SUCCESS, None)
+            return phantom.APP_SUCCESS, None
 
         try:
             resp_json = result.json()
         except Exception as e:
             if endpoint == 'sysAddWatchlistValues':
-                return (phantom.APP_SUCCESS, None)
-            return (action_result.set_status(phantom.APP_ERROR, "Error converting response to json"), None)
+                return phantom.APP_SUCCESS, None
+            return action_result.set_status(phantom.APP_ERROR, "Error converting response to json"), None
 
-        return (phantom.APP_SUCCESS, resp_json)
+        if self._version == '9' and 'return' in resp_json:
+            resp_json = resp_json['return']
 
-    def _delete_session(self):
-
-        if (not self._headers):
-            return phantom.APP_SUCCESS
-
-        if ('Authorization' not in self._headers):
-            return phantom.APP_SUCCESS
-
-        ret_val, ack_data = self._make_rest_call(ActionResult(), "logout", method="delete")
-
-        if (phantom.is_fail(ret_val)):
-            self.save_progress("Unable to logout, non-fatal, ignoring")
-
-        return ret_val
+        return phantom.APP_SUCCESS, resp_json
 
     def _test_connection(self, param):
-
-        config = self.get_config()
 
         action_result = self.add_action_result(ActionResult(param))
 
         ret_val = self._validate_my_config(action_result)
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             self.save_progress("Config Validation failed")
             return action_result.get_status()
 
         # sessions are created to ensure continuous api calls
-        ret_val = self._create_session(config, param, action_result)
+        ret_val = self._create_session(action_result)
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             self.save_progress("Test Connectivity falied")
             return self.get_status()
 
@@ -148,7 +204,7 @@ class MFENitroConnector(BaseConnector):
 
         ret_val, response = self._make_rest_call(action_result, TEST_QUERY)
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             self.save_progress("Test Connectivity falied")
             return action_result.get_status()
 
@@ -160,44 +216,6 @@ class MFENitroConnector(BaseConnector):
 
         return action_result.get_status()
 
-    def initialize(self):
-        self._state = self.load_state()
-        return phantom.APP_SUCCESS
-
-    def finalize(self):
-
-        self.save_state(self._state)
-        self._delete_session()
-
-        return phantom.APP_SUCCESS
-
-    def _create_session(self, config, param, action_result):
-
-        self.save_progress("Creating Session")
-
-        # create session usnig the credentials
-        login_url = LOGIN_URL % config["base_url"]
-
-        login_headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-
-        try:
-            login_response = requests.post(login_url, headers=login_headers, auth=(config['username'], config['password']), verify=config["verify_server_cert"])
-        except Exception as e:
-            return action_result.set_status(phantom.APP_ERROR, "Error creating session", e)
-
-        if (not (200 <= login_response.status_code < 300)):
-            return self._handle_error_response(login_response, action_result)
-
-        try:
-            session = login_response.headers['location']
-        except:
-            return self.set_status(phantom.APP_ERROR, "Error creating session. Response does not contain required field 'location'")
-
-        # the returned session variable should be used as header instead of auth
-        self._headers = {'Authorization': 'Session ' + session, 'Content-Type': 'application/json', 'Accept': 'application/json'}
-
-        return phantom.APP_SUCCESS
-
     def _clean_response(self, input_dict):
 
         if (input_dict is None):
@@ -207,69 +225,11 @@ class MFENitroConnector(BaseConnector):
 
         return string.replace('{', '-').replace('}', '-')
 
-    def _check_query_status(self, action_result, result_id, query_timeout):
-
-        result_req_json = {"resultID": {"value": result_id}}
-
-        EWS_SLEEP_SECS = 2
-
-        self.send_progress("Query complete: 0 %")
-        for retry in xrange(0, query_timeout, EWS_SLEEP_SECS):
-            time.sleep(EWS_SLEEP_SECS)
-            ret_val, ret_data = self._make_rest_call(action_result, GET_STATUS_URL, data=result_req_json)
-
-            if (phantom.is_fail(ret_val)):
-                # The query to get the status of the query failed, treat it as a transient issue and try again
-                self.debug_print("The query to get the status of the query failed, non fatal error")
-                continue
-
-            # parse the response
-            percent_complete = ret_data.get('return', {}).get('percentComplete', 'Unknown')
-            self.send_progress("Query complete: {0} %".format(percent_complete))
-            is_complete = ret_data.get('return', {}).get('complete')
-            if (is_complete):
-                self.send_progress("Processing")
-                return (phantom.APP_SUCCESS, True, "Query finished")
-
-        self.debug_print("Query in-complete")
-        return (phantom.APP_SUCCESS, False, NITRO_QUERY_TIMEOUT_ERR)
-
-    def _perform_calls(self, req_json, action_result, query_timeout):
-
-        # Execute Query
-        ret_val, ack_data = self._make_rest_call(action_result, EXECUTE_QUERY_URL, data=req_json)
-        if (phantom.is_fail(ret_val)):
-            return (action_result.get_status(), None)
-
-        # the result id is mentioned in the response of the query
-        # the result id and session header are the keys for the result retrieval
-        result_id = ack_data.get('return', {}).get("resultID", {}).get("value")
-        if not result_id:
-            return (action_result.set_status(phantom.APP_ERROR, "Response did not contain required key resultID or value"), None)
-
-        # check the status of the query
-        # Error occurs if try to fetch without checking status
-        ret_val, query_finished, message = self._check_query_status(action_result, result_id, query_timeout)
-        if (phantom.is_fail(ret_val)):
-            return (action_result.get_status(), None)
-
-        if (not query_finished):
-            return (action_result.set_status(phantom.APP_ERROR, message), None)
-
-        # Ignoring the results of the status as a failed query will be handled with no result
-        result_req_json = {"resultID": {"value": result_id}}
-        ret_val, ret_data = self._make_rest_call(action_result, GET_RESULTS_URL, data=result_req_json)
-
-        if (phantom.is_fail(ret_val)):
-            return (action_result.get_status(), None)
-
-        return (phantom.APP_SUCCESS, ret_data)
-
     def _get_next_start_time(self, last_time):
 
         config = self.get_config()
         device_tz_sting = config[NITRO_JSON_TIMEZONE]
-        to_tz = timezone(device_tz_sting)
+        to_tz = pytz.timezone(device_tz_sting)
 
         # get the time string passed into a datetime object
         last_time = datetime.strptime(last_time, DATETIME_FORMAT)
@@ -290,7 +250,7 @@ class MFENitroConnector(BaseConnector):
 
         # get the device timezone
         device_tz_sting = config[NITRO_JSON_TIMEZONE]
-        to_tz = timezone(device_tz_sting)
+        to_tz = pytz.timezone(device_tz_sting)
 
         # get the start time to use, i.e. current - poll minutes in UTC
         start_time = datetime.utcnow() - timedelta(minutes=poll_time)
@@ -307,7 +267,7 @@ class MFENitroConnector(BaseConnector):
 
         # get the timezone of the device
         device_tz_sting = config[NITRO_JSON_TIMEZONE]
-        to_tz = timezone(device_tz_sting)
+        to_tz = pytz.timezone(device_tz_sting)
 
         # get the current time
         end_time = datetime.utcnow().replace(tzinfo=pytz.utc)
@@ -316,34 +276,6 @@ class MFENitroConnector(BaseConnector):
         to_dt = to_tz.normalize(end_time.astimezone(to_tz))
 
         return to_dt.strftime(DATETIME_FORMAT)
-
-    def _get_query_params(self, param):
-
-        # function to separate on poll and poll now
-        config = self.get_config()
-        limit = config["max_containers"]
-        query_params = dict()
-        last_time = self._state.get(NITRO_JSON_LAST_DATE_TIME)
-
-        if self.is_poll_now():
-            limit = param.get("container_count", 100)
-            query_params["customStart"] = self._get_first_start_time()
-        elif (self._state.get('first_run', True)):
-            self._state['first_run'] = False
-            limit = config.get("first_run_max_events", 100)
-            query_params["customStart"] = self._get_first_start_time()
-        elif (last_time):
-            query_params["customStart"] = last_time
-        else:
-            query_params["customStart"] = self._get_first_start_time()
-
-        query_params["limit"] = limit
-        query_params["customEnd"] = self._get_end_time()
-
-        if (not self.is_poll_now()):
-            self._state[NITRO_JSON_LAST_DATE_TIME] = query_params["customEnd"]
-
-        return query_params
 
     def _validate_my_config(self, action_result):
 
@@ -357,7 +289,7 @@ class MFENitroConnector(BaseConnector):
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Invalid query timeout value", e)
 
-        if (query_timeout < int(NITRO_DEFAULT_TIMEOUT_SECS)):
+        if query_timeout < int(NITRO_DEFAULT_TIMEOUT_SECS):
             return action_result.set_status(phantom.APP_ERROR, "Please specify a query timeout value greater or equal to {0}".format(NITRO_DEFAULT_TIMEOUT_SECS))
 
         config[NITRO_JSON_QUERY_TIMEOUT] = query_timeout
@@ -369,7 +301,7 @@ class MFENitroConnector(BaseConnector):
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Invalid Poll Time value", e)
 
-        if (poll_time < int(NITRO_POLL_TIME_DEFAULT)):
+        if poll_time < int(NITRO_POLL_TIME_DEFAULT):
             return action_result.set_status(phantom.APP_ERROR, "Please specify the poll time interval value greater than {0}".format(NITRO_POLL_TIME_DEFAULT))
 
         config[NITRO_JSON_POLL_TIME] = poll_time
@@ -381,7 +313,7 @@ class MFENitroConnector(BaseConnector):
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Invalid {0} value".format(NITRO_JSON_MAX_CONTAINERS), e)
 
-        if (max_containers < int(NITRO_DEFAULT_MAX_CONTAINERS)):
+        if max_containers < int(NITRO_DEFAULT_MAX_CONTAINERS):
             return action_result.set_status(phantom.APP_ERROR,
                     "Please specify the {0} value greater than {1}. Ideally this value should be greater than the max events generated within a second on the device.".format(
                         NITRO_JSON_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
@@ -395,7 +327,7 @@ class MFENitroConnector(BaseConnector):
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Invalid {0} value".format(NITRO_JSON_FIRST_MAX_CONTAINERS), e)
 
-        if (first_max_containers < int(NITRO_DEFAULT_MAX_CONTAINERS)):
+        if first_max_containers < int(NITRO_DEFAULT_MAX_CONTAINERS):
             return action_result.set_status(phantom.APP_ERROR,
                     "Please specify the {0} value greater than {1}. Ideally this value should be greater than the max events generated within a second on the device.".format(
                         NITRO_JSON_FIRST_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
@@ -404,123 +336,30 @@ class MFENitroConnector(BaseConnector):
 
         return phantom.APP_SUCCESS
 
-    def _get_filter_fields(self, action_result):
-
-        ret_val, resp_data = self._make_rest_call(action_result, 'qryGetFilterFields', method="get")
-
-        if (phantom.is_fail(ret_val)):
-            return (action_result.get_status(), None)
-
-        return_value = resp_data.get('return')
-
-        if (not return_value):
-            return (action_result.set_status(phantom.APP_ERROR, "Response does not contain required key 'return'"), None)
-
-        return (phantom.APP_SUCCESS, return_value)
-
-    def _parse_filter(self, action_result):
-
-        """
-           "filters": [{
-            "type": "EsmFieldFilter",
-            "field": {"name": "Action"},
-            "operator": "EQUALS",
-            "values": [{
-                "type": "EsmBasicValue",
-                "value": "8"
-            }]
-           }],
-           """
-
-        config = self.get_config()
-
-        filters = config.get(NITRO_JSON_FILTERS)
-
-        if (not filters):
-            return (phantom.APP_SUCCESS, None)
-
-        # try to load the filters as a json
-
-        try:
-            filters = json.loads(filters)
-        except Exception as e:
-            return (action_result.set_status(phantom.APP_ERROR,
-                    "Unable to parse the filter json string Error: {0}".format(str(e))), None)
-
-        if (type(filters) != list):
-            return action_result.set_status(phantom.APP_ERROR,
-                    "Filters need to be a list, even in the case of a single filter, please specify a list with one item")
-
-        ret_val, resp_data = self._get_filter_fields(action_result)
-        if (phantom.is_fail(ret_val)):
-            return (action_result.get_status(), None)
-
-        try:
-            valid_filter_fields = [x['name'] for x in resp_data]
-        except Exception as e:
-            return (action_result.set_status(phantom.APP_ERROR, "Unable to extract allowed filter fields from response JSON"), None)
-
-        for i, curr_filter in enumerate(filters):
-
-            filter_type = curr_filter.get('type')
-            if (not filter_type):
-                return (action_result.set_status(phantom.APP_ERROR, "Filter # {0} missing 'type' key".format(i)), None)
-
-            filter_field = curr_filter.get('field')
-            if (not filter_field):
-                return (action_result.set_status(phantom.APP_ERROR, "Filter # {0} missing 'field' key".format(i)), None)
-
-            field_name = filter_field.get('name')
-            if (not field_name):
-                return (action_result.set_status(phantom.APP_ERROR, "Filter # {0} missing 'field.name' key".format(i)), None)
-
-            if (field_name not in valid_filter_fields):
-                return (action_result.set_status(phantom.APP_ERROR, "Filter # {0} field name '{1}' cannot be filtered upon".format(i, field_name)), None)
-
-            values = curr_filter.get('values')
-            if (not values):
-                return (action_result.set_status(phantom.APP_ERROR, "Filter # {0} missing 'values' key".format(i)), None)
-
-            if (type(values) != list):
-                return (action_result.set_status(phantom.APP_ERROR,
-                        "Filter # {0} 'values' key needs to be a list, even in the case of a single value, please specify a list with one item".format(i)), None)
-
-            for j, curr_value in enumerate(values):
-
-                value_type = curr_value.get('type')
-                if (not value_type):
-                    return (action_result.set_status(phantom.APP_ERROR, "Filter # {0}, value # {1} missing 'type' key".format(i, j)), None)
-
-                value_value = curr_value.get('value')
-                if (not value_value):
-                    return (action_result.set_status(phantom.APP_ERROR, "Filter # {0}, value # {1} missing 'value' key".format(i, j)), None)
-
-        # the filter seems to be fine
-        return (phantom.APP_SUCCESS, filters)
-
     def _list_fields(self, param):
-
-        config = self.get_config()
 
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         ret_val = self._validate_my_config(action_result)
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         # create a session to start the action
-        ret_val = self._create_session(config, param, action_result)
+        ret_val = self._create_session(action_result)
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             self.save_progress("Failed to create the session. Cannot continue")
             return self.get_status()
 
-        ret_val, resp_data = self._get_filter_fields(action_result)
-        if (phantom.is_fail(ret_val)):
-            return (action_result.get_status(), None)
+        ret_val, resp_data = self._make_rest_call(action_result, 'qryGetFilterFields')
+
+        if phantom.is_fail(ret_val):
+            return action_result.get_status(), None
 
         [action_result.add_data(x) for x in resp_data]
+
+        open('fields_9.json', 'w').write(json.dumps(resp_data))
 
         action_result.set_summary({'total_fields': len(resp_data)})
 
@@ -528,97 +367,89 @@ class MFENitroConnector(BaseConnector):
 
     def _list_watchlists(self, param):
 
-        config = self.get_config()
         action_result = self.add_action_result(ActionResult(dict(param)))
+
         ret_val = self._validate_my_config(action_result)
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         # create a session to start the action
-        ret_val = self._create_session(config, param, action_result)
+        ret_val = self._create_session(action_result)
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             self.save_progress("Failed to create the session. Cannot continue")
             return self.get_status()
 
-        ret_val, resp_data = self._make_rest_call(action_result, 'sysGetWatchlists', method="get")
+        endpoint = 'sysGetWatchlists'
+        if self._version == '10':
+            endpoint += '?hidden=true&dynamic=true&writeOnly=true&indexedOnly=true'
 
-        if (phantom.is_fail(ret_val)):
-            return (action_result.get_status(), None)
+        ret_val, resp_data = self._make_rest_call(action_result, endpoint)
 
-        return_value = resp_data.get('return')
+        if phantom.is_fail(ret_val):
+            return action_result.get_status(), None
 
-        if (not return_value):
-            return (action_result.set_status(phantom.APP_ERROR, "Response does not contain required key 'return'"))
+        for watchlist in resp_data:
+            if self._version == '10':
+                watchlist['id'] = {'value': watchlist['id']}
+            action_result.add_data(watchlist)
 
-        [action_result.add_data(x) for x in return_value]
-
-        action_result.set_summary({'total_fields': len(return_value)})
+        action_result.set_summary({'total_fields': len(resp_data)})
 
         return action_result.set_status(phantom.APP_SUCCESS)
-
-    def _get_watchlist_details(self, action_result, data):
-
-        ret_val, resp_data = self._make_rest_call(action_result, 'sysGetWatchlistDetails', data=data)
-
-        if (phantom.is_fail(ret_val)):
-            return (action_result.get_status(), None)
-
-        return_value = resp_data.get('return')
-
-        if (not return_value):
-            return (action_result.set_status(phantom.APP_ERROR, "Response does not contain required key 'return'"), None)
-
-        return (phantom.APP_SUCCESS, return_value)
 
     def _get_watchlist(self, param):
 
         # This will be a two-part action -
         #     1. Get the watchlist details with 'sysGetWatchlistDetails'
         #     2. Get the watchlist values with 'sysGetWatchlistValues?pos=0&count=2500'
-        config = self.get_config()
         action_result = self.add_action_result(ActionResult(dict(param)))
         ret_val = self._validate_my_config(action_result)
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         # create a session to start the action
-        ret_val = self._create_session(config, param, action_result)
+        ret_val = self._create_session(action_result)
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             self.save_progress("Failed to create the session. Cannot continue")
             return self.get_status()
 
-        details_body = {"id": {"value": param["watchlist_id"]}}
-        ret_val, details_return_value = self._get_watchlist_details(action_result, data=details_body)
-        if not details_return_value:
-            return (action_result.set_status(phantom.APP_ERROR, "Could not find watchlist for id: {0}".format(param["watchlist_id"])))
+        value = param["watchlist_id"]
+        if self._version == '9':
+            value = {"value": value}
+
+        details_body = {"id": value}
+        ret_val, details_return_value = self._make_rest_call(action_result, 'sysGetWatchlistDetails', data=details_body)
+
+        if phantom.is_fail(ret_val):
+            return action_result.get_status(), None
 
         try:
             action_result.set_summary({'name': details_return_value["name"]})
             action_result.update_summary({'type': details_return_value["customType"]["name"]})
         except:
-            return (action_result.set_status(phantom.APP_ERROR, "Could not update summary when getting watchlist id: {0}".format(param["watchlist_id"])))
+            return action_result.set_status(phantom.APP_ERROR, "Could not update summary when getting watchlist id: {0}".format(param["watchlist_id"]))
 
         # Get the file id from the details just returned in order to query for the watchlist values
         try:
             values_file_id = details_return_value["valueFile"]["id"]
             values_body = {"file": {"id": values_file_id}}
         except:
-            return (action_result.set_status(phantom.APP_ERROR, "Could not get the fild id from the details for watchlist id: {0}".format(param["watchlist_id"])))
+            return action_result.set_status(phantom.APP_ERROR, "Could not get the fild id from the details for watchlist id: {0}".format(param["watchlist_id"]))
 
         # The hardcoded value for 50,000 bytes read below may need to be a parameter in the action for customization
-        ret_val, resp_data = self._make_rest_call(action_result, 'sysGetWatchlistValues?pos=0&count=50000', data=values_body)
+        ret_val, values_return_value = self._make_rest_call(action_result, 'sysGetWatchlistValues?pos=0&count=50000', data=values_body)
 
-        if (phantom.is_fail(ret_val)):
-            return (action_result.get_status(), None)
+        if phantom.is_fail(ret_val):
+            return action_result.get_status(), None
 
-        values_return_value = resp_data.get('return')
-
-        if (not values_return_value):
-            return (action_result.set_status(phantom.APP_ERROR, "Values response does not contain required key 'return'"))
+        if self._version == '9':
+            if 'return' not in values_return_value:
+                return action_result.set_status(phantom.APP_ERROR, "Response does not contain required key 'return'"), None
+            values_return_value = values_return_value['return']
 
         if values_return_value:
             value_list = values_return_value["data"].splitlines()
@@ -626,75 +457,22 @@ class MFENitroConnector(BaseConnector):
             for x in range(len(value_list)):
                 value_dict_list.append({"values": value_list[x]})
             [action_result.add_data(x) for x in value_dict_list]
-            # details_return_value["values"] = values_return_value["data"].splitlines()
-            # [action_result.add_data(x) for x in details_return_value["values"]]
-            # action_result.add_data(details_return_value)
             action_result.update_summary({'total_values': len(value_dict_list)})
-
-        return action_result.set_status(phantom.APP_SUCCESS)
-
-    def _get_events(self, param):
-
-        config = self.get_config()
-        action_result = self.add_action_result(ActionResult(dict(param)))
-        ret_val = self._validate_my_config(action_result)
-
-        if (phantom.is_fail(ret_val)):
-            return action_result.get_status()
-
-        # create a session to start the action
-        ret_val = self._create_session(config, param, action_result)
-
-        if (phantom.is_fail(ret_val)):
-            self.save_progress("Failed to create the session. Cannot continue")
-            return self.get_status()
-
-        fields = param.get("field_list", DEFAULT_FIELD_LIST)
-        if type(fields) is list:
-            fields = fields
-        elif type(fields) is str:
-            # fields = phantom.get_list_from_string(fields)
-            fields = [x.strip(" '") for x in fields.split(',')]
-        else:
-            return action_result.set_status(phantom.APP_ERROR, "Invalid field list supplied.")
-
-        field_list = []
-        for field in fields:
-            field_list.append({"name": field})
-        data = {"eventId": {"value": param["event_id"]}, "fields": field_list}
-        ret_val, resp_data = self._make_rest_call(action_result, GET_EVENTS_URL, data=data)
-
-        if (phantom.is_fail(ret_val)):
-            return (action_result.get_status())
-
-        fields = ["Rule_msg" if x == "Rule.msg" else x for x in fields]
-
-        if resp_data is not None:
-            try:
-                data_to_add = {k: v for k, v in zip(fields, resp_data["return"][0]["values"])}
-                action_result.add_data(data_to_add)
-            except:
-                return action_result.set_status(phantom.APP_ERROR, "Unable to add field values to action data.")
-        # TODO - need to finish out the function here. Add in the ability to
-        # set polling to do get all correlated events only, then get the source
-        # events and add them as artifacts to the container.
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _update_watchlist(self, param):
 
-        config = self.get_config()
         action_result = self.add_action_result(ActionResult(dict(param)))
-        ret_val = self._validate_my_config(action_result)
 
-        if (phantom.is_fail(ret_val)):
+        ret_val = self._validate_my_config(action_result)
+        if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         # create a session to start the action
-        ret_val = self._create_session(config, param, action_result)
+        ret_val = self._create_session(action_result)
 
-        if (phantom.is_fail(ret_val)):
-            self.save_progress("Failed to create the session. Cannot continue")
+        if phantom.is_fail(ret_val):
             return self.get_status()
 
         try:
@@ -709,21 +487,190 @@ class MFENitroConnector(BaseConnector):
         else:
             try:
                 values_to_add = [x.strip(" '") for x in param["values_to_add"].split(',')]
-                details_body = {"watchlist": {"value": param["watchlist_id"]}, "values": values_to_add}
             except Exception as e:
-                return (action_result.set_status(phantom.APP_ERROR,
-                        "Unable to parse the 'values to add' list string Error: {0}".format(str(e))))
+                return action_result.set_status(phantom.APP_ERROR, "Unable to parse the 'values to add' list string Error: {0}".format(str(e)))
 
-        details_body = {"watchlist": {"value": param["watchlist_id"]}, "values": values_to_add}
-        ret_val, resp_data = self._make_rest_call(action_result, 'sysAddWatchlistValues', data=details_body)
+        w_value = param["watchlist_id"]
+        if self._version == '9':
+            w_value = {'value': w_value}
 
-        if (phantom.is_fail(ret_val)):
-            return (action_result.set_status(phantom.APP_ERROR, "Could not update watchlist for id: {0}".format(param["watchlist_id"])))
+        body = {"watchlist": w_value, "values": values_to_add}
+        ret_val, resp_data = self._make_rest_call(action_result, 'sysAddWatchlistValues', data=body)
+
+        if phantom.is_fail(ret_val):
+            return action_result.set_status(phantom.APP_ERROR, "Could not update watchlist for id: {0}".format(param["watchlist_id"]))
 
         self.debug_print("Completed update, moving to get watchlist")
         self._get_watchlist(param)
 
         return action_result.set_status(phantom.APP_SUCCESS)
+
+    def _get_events(self, param):
+
+        action_result = self.add_action_result(ActionResult(dict(param)))
+        ret_val = self._validate_my_config(action_result)
+
+        if phantom.is_fail(ret_val):
+            return action_result.get_status()
+
+        # create a session to start the action
+        ret_val = self._create_session(action_result)
+
+        if phantom.is_fail(ret_val):
+            self.save_progress("Failed to create the session. Cannot continue")
+            return self.get_status()
+
+        fields = param.get("field_list", DEFAULT_FIELD_LIST)
+        if type(fields) is list:
+            fields = fields
+        elif type(fields) is str:
+            fields = [x.strip(" '") for x in fields.split(',')]
+        else:
+            return action_result.set_status(phantom.APP_ERROR, "Invalid field list supplied.")
+
+        field_list = []
+        for field in fields:
+            field_list.append({"name": field})
+
+        event_id = param['event_id']
+        if self._version == '9':
+            event_id = {"value": event_id}
+
+        data = {"eventId": event_id, "fields": field_list}
+
+        ret_val, resp_data = self._make_rest_call(action_result, GET_EVENTS_URL, data=data)
+
+        if phantom.is_fail(ret_val):
+            return action_result.get_status()
+
+        fields = ["Rule_msg" if x == "Rule.msg" else x for x in fields]
+
+        if resp_data is not None:
+            try:
+                data_to_add = {k: v for k, v in zip(fields, resp_data[0]["values"])}
+                action_result.add_data(data_to_add)
+            except:
+                return action_result.set_status(phantom.APP_ERROR, "Unable to add field values to action data.")
+        # TODO - need to finish out the function here. Add in the ability to
+        # set polling to do get all correlated events only, then get the source
+        # events and add them as artifacts to the container.
+
+        return action_result.set_status(phantom.APP_SUCCESS)
+
+    def _get_query_params(self, param):
+
+        # function to separate on poll and poll now
+        config = self.get_config()
+        limit = config["max_containers"]
+        query_params = dict()
+        last_time = self._state.get(NITRO_JSON_LAST_DATE_TIME)
+
+        if self.is_poll_now():
+            limit = param.get("container_count", 100)
+            query_params["customStart"] = self._get_first_start_time()
+        elif self._state.get('first_run', True):
+            self._state['first_run'] = False
+            limit = config.get("first_run_max_events", 100)
+            query_params["customStart"] = self._get_first_start_time()
+        elif last_time:
+            query_params["customStart"] = last_time
+        else:
+            query_params["customStart"] = self._get_first_start_time()
+
+        query_params["limit"] = limit
+        query_params["customEnd"] = self._get_end_time()
+
+        if not self.is_poll_now():
+            self._state[NITRO_JSON_LAST_DATE_TIME] = query_params["customEnd"]
+
+        return query_params
+
+    def _parse_filter(self, action_result):
+
+        config = self.get_config()
+
+        filters = config.get(NITRO_JSON_FILTERS)
+
+        if not filters:
+
+            # ESM v10 requires at least one filter, so we add a useless filter here
+            if self._version == '10':
+                filters = [
+                        {
+                            "type": "EsmFieldFilter",
+                            "field": "ID",
+                            "operator": "NOT_IN",
+                            "values": [
+                                {
+                                    "type": "EsmBasicValue",
+                                    "value": "0"
+                                }
+                            ]
+                        }
+                    ]
+
+                return phantom.APP_SUCCESS, filters
+
+            return phantom.APP_SUCCESS, None
+
+        # try to load the filters as a json
+
+        try:
+            filters = json.loads(filters)
+        except Exception as e:
+            return action_result.set_status(phantom.APP_ERROR, "Unable to parse the filter json string Error: {0}".format(str(e))), None
+
+        if type(filters) != list:
+            return action_result.set_status(phantom.APP_ERROR,
+                    "Filters need to be a list, even in the case of a single filter, please specify a list with one item")
+
+        ret_val, resp_data = self._make_rest_call(action_result, 'qryGetFilterFields')
+
+        if phantom.is_fail(ret_val):
+            return action_result.get_status(), None
+
+        try:
+            valid_filter_fields = [x['name'] for x in resp_data]
+        except Exception as e:
+            return action_result.set_status(phantom.APP_ERROR, "Unable to extract allowed filter fields from response JSON"), None
+
+        for i, curr_filter in enumerate(filters):
+
+            filter_type = curr_filter.get('type')
+            if not filter_type:
+                return action_result.set_status(phantom.APP_ERROR, "Filter # {0} missing 'type' key".format(i)), None
+
+            filter_field = curr_filter.get('field')
+            if not filter_field:
+                return action_result.set_status(phantom.APP_ERROR, "Filter # {0} missing 'field' key".format(i)), None
+
+            field_name = filter_field.get('name')
+            if not field_name:
+                return action_result.set_status(phantom.APP_ERROR, "Filter # {0} missing 'field.name' key".format(i)), None
+
+            if field_name not in valid_filter_fields:
+                return action_result.set_status(phantom.APP_ERROR, "Filter # {0} field name '{1}' cannot be filtered upon".format(i, field_name)), None
+
+            values = curr_filter.get('values')
+            if not values:
+                return action_result.set_status(phantom.APP_ERROR, "Filter # {0} missing 'values' key".format(i)), None
+
+            if type(values) != list:
+                return action_result.set_status(phantom.APP_ERROR,
+                        "Filter # {0} 'values' key needs to be a list, even in the case of a single value, please specify a list with one item".format(i)), None
+
+            for j, curr_value in enumerate(values):
+
+                value_type = curr_value.get('type')
+                if not value_type:
+                    return action_result.set_status(phantom.APP_ERROR, "Filter # {0}, value # {1} missing 'type' key".format(i, j)), None
+
+                value_value = curr_value.get('value')
+                if not value_value:
+                    return action_result.set_status(phantom.APP_ERROR, "Filter # {0}, value # {1} missing 'value' key".format(i, j)), None
+
+        # the filter seems to be fine
+        return phantom.APP_SUCCESS, filters
 
     def _create_request_blocks(self, query_dict, filter_dict):
 
@@ -742,7 +689,7 @@ class MFENitroConnector(BaseConnector):
         block_length = 50 - len(request_fields.common_fields)
 
         # first get the field blocks
-        field_blocks = [request_fields.fields_list[i:i + block_length] for i in xrange(0, len(request_fields.fields_list), block_length)]
+        field_blocks = [request_fields.event_fields_list[i:i + block_length] for i in xrange(0, len(request_fields.event_fields_list), block_length)]
 
         # create request blocks from the base
         request_blocks = [deepcopy(request_fields.req_part_base) for x in field_blocks]
@@ -757,120 +704,72 @@ class MFENitroConnector(BaseConnector):
 
         return (phantom.APP_SUCCESS, request_blocks)
 
-    def _on_poll(self, param):
+    def _perform_calls(self, req_json, action_result, query_timeout):
 
-        config = self.get_config()
+        # Execute Query
+        ret_val, ack_data = self._make_rest_call(action_result, EXECUTE_QUERY_URL, data=req_json)
+        if phantom.is_fail(ret_val):
+            return action_result.get_status(), None
 
-        action_result = self.add_action_result(ActionResult(dict(param)))
+        # the result id is mentioned in the response of the query
+        # the result id and session header are the keys for the result retrieval
+        result_id = ack_data.get("resultID", {})
+        if self._version == '9':
+            result_id = result_id.get("value")
 
-        ret_val = self._validate_my_config(action_result)
+        if not result_id:
+            return action_result.set_status(phantom.APP_ERROR, "Response did not contain required key resultID or value"), None
 
-        if (phantom.is_fail(ret_val)):
-            return action_result.get_status()
+        # check the status of the query
+        # Error occurs if try to fetch without checking status
+        ret_val, query_finished, message = self._check_query_status(action_result, result_id, query_timeout)
+        if phantom.is_fail(ret_val):
+            return action_result.get_status(), None
 
-        # create a session to start the action
-        ret_val = self._create_session(config, param, action_result)
+        if not query_finished:
+            return action_result.set_status(phantom.APP_ERROR, message), None
 
-        if (phantom.is_fail(ret_val)):
-            self.save_progress("Failed to create the session. Cannot continue")
-            return self.get_status()
+        if self._version == '9':
+            result_id = {"value": result_id}
+        result_req_json = {"resultID": result_id}
 
-        # Get the query_params based on the type of poll
-        query_params = self._get_query_params(param)
+        # Ignoring the results of the status as a failed query will be handled with no result
+        ret_val, ret_data = self._make_rest_call(action_result, GET_RESULTS_URL, data=result_req_json)
 
-        # Get the filters if configured
-        ret_val, filter_dict = self._parse_filter(action_result)
+        if phantom.is_fail(ret_val):
+            return action_result.get_status(), None
 
-        if (phantom.is_fail(ret_val)):
-            self.save_progress(action_result.get_message())
-            return action_result.get_status()
+        return phantom.APP_SUCCESS, ret_data
 
-        ret_val, request_blocks = self._create_request_blocks(query_params, filter_dict)
+    def _check_query_status(self, action_result, result_id, query_timeout):
 
-        if (phantom.is_fail(ret_val)):
-            self.save_progress("Unable to break fields into multiple request blocks, Polling Failed")
-            return action_result.get_status()
+        if self._version == '9':
+            result_id = {"value": result_id}
 
-        # now make as many queries as required
+        result_req_json = {"resultID": result_id}
 
-        message = "Getting max {0} event(s) between {1} and {2}".format(
-                query_params.get('limit', '-'),
-                query_params.get('customStart', '-').replace('T', ' ').replace('Z', ''),
-                query_params.get('customEnd', '-').replace('T', ' ').replace('Z', ''))
-        self.save_progress(message)
+        EWS_SLEEP_SECS = 2
 
-        query_timeout = config[NITRO_JSON_QUERY_TIMEOUT]
+        self.send_progress("Query complete: 0 %")
+        for retry in xrange(0, query_timeout, EWS_SLEEP_SECS):
+            time.sleep(EWS_SLEEP_SECS)
+            ret_val, ret_data = self._make_rest_call(action_result, GET_STATUS_URL, data=result_req_json)
 
-        total_parts = len(request_blocks)
+            if phantom.is_fail(ret_val):
+                # The query to get the status of the query failed, treat it as a transient issue and try again
+                self.debug_print("The query to get the status of the query failed, non fatal error")
+                continue
 
-        result_rows = []
+            # parse the response
+            percent_complete = ret_data.get('percentComplete', 'Unknown')
+            self.send_progress("Query complete: {0} %".format(percent_complete))
+            is_complete = ret_data.get('complete')
+            if is_complete:
+                self.send_progress("Processing")
+                return phantom.APP_SUCCESS, True, "Query finished"
 
-        for i, request_block in enumerate(request_blocks):
-
-            self.send_progress("Polling the event fields in part {0} of {1}".format(i + 1, total_parts))
-
-            ret_val, curr_result = self._perform_calls(request_block, action_result, query_timeout)
-
-            if (phantom.is_fail(ret_val)):
-                self.save_progress("Unable to fetch event details for 1st Part, Polling Failed")
-                return action_result.get_status()
-
-            # The response is like a table, with columns and rows
-            # every column = {'name': 'Column Name'}
-            # every row = {'values': ['Column Name Value']}
-            # So basically we have to take the Column Name and the respective Value and if a value exists then add it to a dictionary.
-            # We will create a dictionary of key value pair for every row, since that's how containers and artifacts are Diced.
-            # Also if the rows array is empty that means no events were matched
-
-            rows = curr_result.get('return', {}).get('rows')
-            columns = curr_result.get('return', {}).get('columns')
-
-            no_of_events = len(rows)
-
-            if (i == 0):
-                self.save_progress("Got {0} event{1}", no_of_events, '' if (no_of_events == 1) else 's')
-
-            if (not rows):
-                return action_result.set_status(phantom.APP_SUCCESS)
-
-            if (i == 0):
-                result_rows = [dict() for x in range(0, no_of_events)]
-
-            # The app makes multiple queries to the device, each time asking for a list of fields for max number of events that occured between a time range
-            # What that means is that in the Nth iteration where N > 0 we might get more events, than when N == 0.
-            # This means there was a new event generated in the same time range that we are querying, since we are sorting it ASCENDING it will be at the end
-            # and should be dropped.
-            if (len(rows) > len(result_rows)):
-                self.debug_print("Need to trim the rows")
-                del rows[len(result_rows)]
-                no_of_events = len(rows)
-
-            for i, curr_row in enumerate(rows):
-
-                curr_row_dict = {}
-
-                values = curr_row.get('values')
-
-                # The columns list contains the column names and the values list contains the value of each column
-                # Map this into a dictionary that has the column name as the key and the value is picked from the values list.
-                # Basically use the item at index N of the columns list as the name of the key and the item at index N of the values
-                # list as the value, _only_ if a value exists. So during the mapping ignore keys that have an empty value.
-                map(lambda x, y: curr_row_dict.update({x['name']: y}) if y else False, columns, values)
-
-                # curr_row_dict = {k: v for k, v in curr_row_dict.iteritems() if v}
-                result_rows[i].update(curr_row_dict)
-
-        self.send_progress("Event fields acquired successfully. Closing session")
-
-        ret_val = self._handle_result_rows(result_rows)
-
-        if (phantom.is_fail(ret_val)):
-            self.save_progress("Polling Failed")
-            return action_result.set_status(phantom.APP_ERROR, "Polling failed")
-
-        self.save_progress("Event polling successful")
-
-        return action_result.set_status(phantom.APP_SUCCESS, "Polling event success")
+        self.debug_print("Query in-complete")
+        return phantom.APP_SUCCESS, False, NITRO_QUERY_TIMEOUT_ERR
 
     def _handle_result_rows(self, events):
 
@@ -885,7 +784,7 @@ class MFENitroConnector(BaseConnector):
             self._create_container(curr_event, cef_dict)
 
         # store the date time of the last event
-        if (events and (not self.is_poll_now())):
+        if events and not self.is_poll_now():
 
             config = self.get_config()
 
@@ -899,7 +798,7 @@ class MFENitroConnector(BaseConnector):
 
             date_strings = set(date_strings)
 
-            if (len(date_strings) == 1):
+            if len(date_strings) == 1:
                 self.debug_print("Getting all containers with the same date, down to the second." +
                         " That means the device is generating max_containers=({0}) per second.".format(config[NITRO_JSON_MAX_CONTAINERS]) +
                         " Skipping to the next second to not get stuck.")
@@ -957,12 +856,12 @@ class MFENitroConnector(BaseConnector):
         ret_val, message, container_id = self.save_container(container)
         self.debug_print(CREATE_CONTAINER_RESPONSE.format(ret_val, message, container_id))
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             message = "Failed to add Container error msg: {0}".format(message)
             self.debug_print(message)
             return phantom.APP_ERROR, "Failed Creating container"
 
-        if (not container_id):
+        if not container_id:
             message = "save_container did not return a container_id"
             self.debug_print(message)
             return phantom.APP_ERROR, "Failed creating container"
@@ -977,53 +876,263 @@ class MFENitroConnector(BaseConnector):
         artifact['run_automation'] = True
         ret_val, status_string, artifact_id = self.save_artifact(artifact)
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             return phantom.APP_ERROR, "Failed to add artifact"
 
         return phantom.APP_SUCCESS, "Successfully created container and added artifact"
+
+    def _ingest_alarms(self, action_result, params):
+
+        self.debug_print("Ingest data type is Alarm. Ingesting alarms.")
+
+        limit = None
+        if 'limit' in params:
+            limit = params['limit']
+            del params['limit']
+
+        params['triggeredTimeRange'] = 'CUSTOM'
+
+        ret_val, resp_data = self._make_rest_call(action_result, GET_ALARMS_URL, params=params)
+
+        resp_data = list(reversed(resp_data))
+
+        if limit and len(resp_data) > limit:
+            self.save_progress("Got more alarms than limit. Trimming number of alarms from {0} to {1}".format(len(resp_data), limit))
+            resp_data = resp_data[:limit]
+            if not self.is_poll_now():
+                self._state[NITRO_JSON_LAST_DATE_TIME] = (datetime.strptime(resp_data[-1]['triggeredDate'], NITRO_RESP_DATETIME_FORMAT) +
+                        timedelta(seconds=1)).strftime(DATETIME_FORMAT)
+
+        containers = []
+        for alarm in resp_data:
+
+            container = {}
+            artifact = {}
+
+            container['name'] = '{0} at {1}'.format(alarm['alarmName'], alarm['triggeredDate'])
+            container['source_data_identifier'] = alarm['id']
+            container['data'] = {'raw_alarm': alarm}
+            container['artifacts'] = [artifact]
+
+            if alarm['severity'] <= 25:
+                container['severity'] = 'low'
+
+            if alarm['severity'] >= 75:
+                container['severity'] = 'high'
+
+            artifact.update(_artifact_common)
+            artifact['name'] = "Alarm Artifact"
+            artifact['source_data_identifier'] = alarm['id']
+            artifact['cef'] = alarm
+            artifact['cef_types'] = {'id': ['esm alarm id']}
+
+            containers.append(container)
+
+        self.save_containers(containers)
+
+        return action_result.set_status(phantom.APP_SUCCESS)
+
+    def _on_poll(self, param):
+
+        config = self.get_config()
+
+        action_result = self.add_action_result(ActionResult(dict(param)))
+
+        ret_val = self._validate_my_config(action_result)
+
+        if phantom.is_fail(ret_val):
+            return action_result.get_status()
+
+        # create a session to start the action
+        ret_val = self._create_session(action_result)
+
+        if phantom.is_fail(ret_val):
+            self.save_progress("Failed to create the session. Cannot continue")
+            return self.get_status()
+
+        # Get the query_params based on the type of poll
+        query_params = self._get_query_params(param)
+
+        if self._ingest_type == 'Alarms':
+            return self._ingest_alarms(action_result, query_params)
+
+        # Get the filters if configured
+        ret_val, filter_dict = self._parse_filter(action_result)
+
+        if phantom.is_fail(ret_val):
+            self.save_progress(action_result.get_message())
+            return action_result.get_status()
+
+        ret_val, request_blocks = self._create_request_blocks(query_params, filter_dict)
+
+        if phantom.is_fail(ret_val):
+            self.save_progress("Unable to break fields into multiple request blocks, Polling Failed")
+            return action_result.get_status()
+
+        # now make as many queries as required
+
+        message = "Getting max {0} event(s) between {1} and {2}".format(
+                query_params.get('limit', '-'),
+                query_params.get('customStart', '-').replace('T', ' ').replace('Z', ''),
+                query_params.get('customEnd', '-').replace('T', ' ').replace('Z', ''))
+        self.save_progress(message)
+
+        query_timeout = config[NITRO_JSON_QUERY_TIMEOUT]
+
+        total_parts = len(request_blocks)
+
+        result_rows = []
+
+        for i, request_block in enumerate(request_blocks):
+
+            self.send_progress("Polling the event fields in part {0} of {1}".format(i + 1, total_parts))
+
+            ret_val, curr_result = self._perform_calls(request_block, action_result, query_timeout)
+
+            if phantom.is_fail(ret_val):
+                self.save_progress("Unable to fetch event details for 1st Part, Polling Failed")
+                return action_result.get_status()
+
+            # The response is like a table, with columns and rows
+            # every column = {'name': 'Column Name'}
+            # every row = {'values': ['Column Name Value']}
+            # So basically we have to take the Column Name and the respective Value and if a value exists then add it to a dictionary.
+            # We will create a dictionary of key value pair for every row, since that's how containers and artifacts are Diced.
+            # Also if the rows array is empty that means no events were matched
+
+            rows = curr_result.get('rows', [])
+            columns = curr_result.get('columns', [])
+
+            no_of_events = len(rows)
+
+            if i == 0:
+                self.save_progress("Got {0} event{1}", no_of_events, '' if (no_of_events == 1) else 's')
+
+            if not rows:
+                return action_result.set_status(phantom.APP_SUCCESS)
+
+            if i == 0:
+                result_rows = [dict() for x in range(0, no_of_events)]
+
+            # The app makes multiple queries to the device, each time asking for a list of fields for max number of events that occured between a time range
+            # What that means is that in the Nth iteration where N > 0 we might get more events, than when N == 0.
+            # This means there was a new event generated in the same time range that we are querying, since we are sorting it ASCENDING it will be at the end
+            # and should be dropped.
+            if len(rows) > len(result_rows):
+                self.debug_print("Need to trim the rows")
+                del rows[len(result_rows)]
+                no_of_events = len(rows)
+
+            for i, curr_row in enumerate(rows):
+
+                curr_row_dict = {}
+
+                values = curr_row.get('values')
+
+                # The columns list contains the column names and the values list contains the value of each column
+                # Map this into a dictionary that has the column name as the key and the value is picked from the values list.
+                # Basically use the item at index N of the columns list as the name of the key and the item at index N of the values
+                # list as the value, _only_ if a value exists. So during the mapping ignore keys that have an empty value.
+                map(lambda x, y: curr_row_dict.update({x['name']: y}) if y else False, columns, values)
+
+                # curr_row_dict = {k: v for k, v in curr_row_dict.iteritems() if v}
+                result_rows[i].update(curr_row_dict)
+
+        self.send_progress("Event fields acquired successfully. Closing session")
+
+        ret_val = self._handle_result_rows(result_rows)
+
+        if phantom.is_fail(ret_val):
+            self.save_progress("Polling Failed")
+            return action_result.set_status(phantom.APP_ERROR, "Polling failed")
+
+        self.save_progress("Event polling successful")
+
+        return action_result.set_status(phantom.APP_SUCCESS, "Polling event success")
 
     def handle_action(self, param):
 
         ret_val = phantom.APP_SUCCESS
         action_id = self.get_action_identifier()
 
-        if (action_id == self.ACTION_ID_TEST_CONNECTIVITY):
+        if action_id == self.ACTION_ID_TEST_CONNECTIVITY:
             ret_val = self._test_connection(param)
-        elif (action_id == self.ACTION_ID_ON_POLL):
-            ret_val = self._on_poll(param)
-        elif (action_id == self.ACTION_ID_LIST_FIELDS):
-            ret_val = self._list_fields(param)
-        elif (action_id == self.ACTION_ID_LIST_WATCHLISTS):
-            ret_val = self._list_watchlists(param)
-        elif (action_id == self.ACTION_ID_GET_WATCHLIST):
-            ret_val = self._get_watchlist(param)
-        elif (action_id == self.ACTION_ID_UPDATE_WATCHLIST):
+        elif action_id == self.ACTION_ID_UPDATE_WATCHLIST:
             ret_val = self._update_watchlist(param)
-        elif (action_id == self.ACTION_ID_GET_EVENTS):
+        elif action_id == self.ACTION_ID_LIST_WATCHLISTS:
+            ret_val = self._list_watchlists(param)
+        elif action_id == self.ACTION_ID_GET_WATCHLIST:
+            ret_val = self._get_watchlist(param)
+        elif action_id == self.ACTION_ID_LIST_FIELDS:
+            ret_val = self._list_fields(param)
+        elif action_id == self.ACTION_ID_GET_EVENTS:
             ret_val = self._get_events(param)
+        elif action_id == self.ACTION_ID_ON_POLL:
+            ret_val = self._on_poll(param)
 
         return ret_val
 
 
 if __name__ == '__main__':
 
-    import sys
-    import pudb
+    # import pudb
+    import argparse
 
-    # Breakpoint at runtime
-    pudb.set_trace()
+    # pudb.set_trace()
 
-    if (len(sys.argv) < 2):
-        print "No test json specified as input"
-        exit(0)
+    argparser = argparse.ArgumentParser()
 
-    with open(sys.argv[1]) as f:
+    argparser.add_argument('input_test_json', help='Input Test JSON file')
+    argparser.add_argument('-u', '--username', help='username', required=False)
+    argparser.add_argument('-p', '--password', help='password', required=False)
+
+    args = argparser.parse_args()
+    session_id = None
+
+    username = args.username
+    password = args.password
+
+    if username is not None and password is None:
+
+        # User specified a username but not a password, so ask
+        import getpass
+        password = getpass.getpass("Password: ")
+
+    if username and password:
+        try:
+            print "Accessing the Login page"
+            r = requests.get("https://127.0.0.1/login", verify=False)
+            csrftoken = r.cookies['csrftoken']
+
+            data = dict()
+            data['username'] = username
+            data['password'] = password
+            data['csrfmiddlewaretoken'] = csrftoken
+
+            headers = dict()
+            headers['Cookie'] = 'csrftoken=' + csrftoken
+            headers['Referer'] = 'https://127.0.0.1/login'
+
+            print "Logging into Platform to get the session id"
+            r2 = requests.post("https://127.0.0.1/login", verify=False, data=data, headers=headers)
+            session_id = r2.cookies['sessionid']
+        except Exception as e:
+            print "Unable to get session id from the platfrom. Error: " + str(e)
+            exit(1)
+
+    with open(args.input_test_json) as f:
         in_json = f.read()
         in_json = json.loads(in_json)
-        print(json.dumps(in_json, indent=4))
+        print json.dumps(in_json, indent=4)
+
         connector = MFENitroConnector()
         connector.print_progress_message = True
+
+        if session_id is not None:
+            in_json['user_session_token'] = session_id
+            connector._set_csrf_info(csrftoken, headers['Referer'])
+
         ret_val = connector._handle_action(json.dumps(in_json), None)
-        print (json.dumps(json.loads(ret_val), indent=4))
+        print json.dumps(json.loads(ret_val), indent=4)
 
     exit(0)
