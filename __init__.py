@@ -1,5 +1,5 @@
 # --
-# File: mfenitro_connector.py
+# File: __init__.py
 #
 # Copyright (c) 2016-2018 Splunk Inc.
 #

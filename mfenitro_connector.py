@@ -359,8 +359,6 @@ class MFENitroConnector(BaseConnector):
 
         [action_result.add_data(x) for x in resp_data]
 
-        open('fields_9.json', 'w').write(json.dumps(resp_data))
-
         action_result.set_summary({'total_fields': len(resp_data)})
 
         return action_result.set_status(phantom.APP_SUCCESS)
