@@ -1,5 +1,5 @@
 # --
-# File: mfenitro_connector.py
+# File: request_fields.py
 #
 # Copyright (c) 2016-2018 Splunk Inc.
 #

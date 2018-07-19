@@ -300,7 +300,7 @@
                 "field_list": {
                     "data_type": "string",
                     "order": 1,
-                    "description": "Comma Separated List of event fields to get",
+                    "description": "Comma separated list of event fields to get",
                     "required": false
                 }
             },

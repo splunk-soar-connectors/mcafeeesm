@@ -20,7 +20,7 @@ NITRO_BASE_URL = "{0}/rs/esm/"
 GET_STATUS_URL = "qryGetStatus"
 GET_EVENTS_URL = "qryGetCorrEventDataForID?queryType=EVENT"
 TEST_QUERY = "qryGetSelectFields?type=EVENT&groupType=NO_GROUP"
-EXECUTE_QUERY_URL = "qryExecuteDetail?type={0}&reverse=false"
+EXECUTE_QUERY_URL = "qryExecuteDetail?type=EVENT&reverse=false"
 GET_ALARMS_URL = "alarmGetTriggeredAlarms"
 GET_RESULTS_URL = "qryGetResults?startPos=0&numRows=1000000&reverse=false"
 

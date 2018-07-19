@@ -988,7 +988,7 @@ class MFENitroConnector(BaseConnector):
             ret_val, curr_result = self._perform_calls(request_block, action_result, query_timeout)
 
             if phantom.is_fail(ret_val):
-                self.save_progress("Unable to fetch event details for 1st Part, Polling Failed")
+                self.save_progress("Unable to fetch event details for, Polling Failed")
                 return action_result.get_status()
 
             # The response is like a table, with columns and rows
