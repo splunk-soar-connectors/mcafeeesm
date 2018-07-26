@@ -58,6 +58,7 @@ class MFENitroConnector(BaseConnector):
         self._verify = None
         self._session = None
         self._headers = None
+        self._version = None
         self._username = None
         self._password = None
         self._base_url = None
@@ -591,7 +592,7 @@ class MFENitroConnector(BaseConnector):
 
         if not filters:
 
-            # ESM v10 requires at least one filter, so we add a useless filter here
+            # ESM v10 requires at least one filter, so we add a filter here
             if self._version == '10':
                 filters = [
                         {
