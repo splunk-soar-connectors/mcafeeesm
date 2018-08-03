@@ -445,11 +445,6 @@ class MFENitroConnector(BaseConnector):
         if phantom.is_fail(ret_val):
             return action_result.get_status(), None
 
-        if self._version == '9':
-            if 'return' not in values_return_value:
-                return action_result.set_status(phantom.APP_ERROR, "Response does not contain required key 'return'"), None
-            values_return_value = values_return_value['return']
-
         if values_return_value:
             value_list = values_return_value["data"].splitlines()
             value_dict_list = []
