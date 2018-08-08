@@ -198,7 +198,7 @@ class MFENitroConnector(BaseConnector):
         ret_val = self._create_session(action_result)
 
         if phantom.is_fail(ret_val):
-            self.save_progress("Test Connectivity falied")
+            self.save_progress("Test Connectivity failed")
             return self.get_status()
 
         self.save_progress("Session created, testing Query")
@@ -206,7 +206,7 @@ class MFENitroConnector(BaseConnector):
         ret_val, response = self._make_rest_call(action_result, TEST_QUERY)
 
         if phantom.is_fail(ret_val):
-            self.save_progress("Test Connectivity falied")
+            self.save_progress("Test Connectivity failed")
             return action_result.get_status()
 
         self.save_progress("Query done, Logging out")
@@ -437,7 +437,7 @@ class MFENitroConnector(BaseConnector):
             values_file_id = details_return_value["valueFile"]["id"]
             values_body = {"file": {"id": values_file_id}}
         except:
-            return action_result.set_status(phantom.APP_ERROR, "Could not get the fild id from the details for watchlist id: {0}".format(param["watchlist_id"]))
+            return action_result.set_status(phantom.APP_ERROR, "Could not get the file id from the details for watchlist id: {0}".format(param["watchlist_id"]))
 
         # The hardcoded value for 50,000 bytes read below may need to be a parameter in the action for customization
         ret_val, values_return_value = self._make_rest_call(action_result, 'sysGetWatchlistValues?pos=0&count=50000', data=values_body)
