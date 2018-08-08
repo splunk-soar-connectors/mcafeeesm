@@ -540,11 +540,16 @@ class MFENitroConnector(BaseConnector):
         fields = ["Rule_msg" if x == "Rule.msg" else x for x in fields]
 
         if resp_data is not None:
+
+            if not resp_data:
+                return action_result.set_status(phantom.APP_SUCCESS, "No correlated events found with given ID.")
+
             try:
                 data_to_add = {k: v for k, v in zip(fields, resp_data[0]["values"])}
                 action_result.add_data(data_to_add)
             except:
                 return action_result.set_status(phantom.APP_ERROR, "Unable to add field values to action data.")
+
         # TODO - need to finish out the function here. Add in the ability to
         # set polling to do get all correlated events only, then get the source
         # events and add them as artifacts to the container.
