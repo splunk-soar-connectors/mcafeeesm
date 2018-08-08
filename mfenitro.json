@@ -2,7 +2,7 @@
     "appid": "1d20c51a-7f60-465b-a8e3-fc02967bec4d",
     "deprecated_appid": "161ce6ea-c214-48e9-8bd9-56b73dffa7da",
     "name": "McAfee ESM",
-    "description": "This app integrates with an instance of McAfee ESM to perform invesitigative and ingestion actions",
+    "description": "This app integrates with an instance of McAfee ESM to perform investigative and ingestion actions",
     "publisher": "Phantom",
     "type": "siem",
     "main_module": "mfenitro_connector.pyc",
