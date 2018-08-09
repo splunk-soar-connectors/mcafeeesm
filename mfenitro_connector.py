@@ -416,28 +416,31 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Failed to create the session. Cannot continue")
             return self.get_status()
 
-        value = param["watchlist_id"]
-        if self._version == '9':
-            value = {"value": value}
+        return self._get_watchlist_details(action_result, param["watchlist_id"])
 
-        details_body = {"id": value}
+    def _get_watchlist_details(self, action_result, watchlist_id):
+
+        if self._version == '9':
+            watchlist_id = {"value": watchlist_id}
+
+        details_body = {"id": watchlist_id}
         ret_val, details_return_value = self._make_rest_call(action_result, 'sysGetWatchlistDetails', data=details_body)
 
         if phantom.is_fail(ret_val):
-            return action_result.get_status(), None
+            return ret_val
 
         try:
             action_result.set_summary({'name': details_return_value["name"]})
             action_result.update_summary({'type': details_return_value["customType"]["name"]})
         except:
-            return action_result.set_status(phantom.APP_ERROR, "Could not update summary when getting watchlist id: {0}".format(param["watchlist_id"]))
+            return action_result.set_status(phantom.APP_ERROR, "Could not update summary when getting watchlist id: {0}".format(watchlist_id))
 
         # Get the file id from the details just returned in order to query for the watchlist values
         try:
             values_file_id = details_return_value["valueFile"]["id"]
             values_body = {"file": {"id": values_file_id}}
         except:
-            return action_result.set_status(phantom.APP_ERROR, "Could not get the fild id from the details for watchlist id: {0}".format(param["watchlist_id"]))
+            return action_result.set_status(phantom.APP_ERROR, "Could not get the fild id from the details for watchlist id: {0}".format(watchlist_id))
 
         # The hardcoded value for 50,000 bytes read below may need to be a parameter in the action for customization
         ret_val, values_return_value = self._make_rest_call(action_result, 'sysGetWatchlistValues?pos=0&count=50000', data=values_body)
@@ -495,9 +498,7 @@ class MFENitroConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, "Could not update watchlist for id: {0}".format(param["watchlist_id"]))
 
         self.debug_print("Completed update, moving to get watchlist")
-        self._get_watchlist(param)
-
-        return action_result.set_status(phantom.APP_SUCCESS)
+        return self._get_watchlist_details(action_result, param["watchlist_id"])
 
     def _get_events(self, param):
 
