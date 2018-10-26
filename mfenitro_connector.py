@@ -87,10 +87,6 @@ class MFENitroConnector(BaseConnector):
     def finalize(self):
 
         self.save_state(self._state)
-
-        if self._version == '9':
-            self._delete_session()
-
         return phantom.APP_SUCCESS
 
     def _create_session(self, action_result):
@@ -120,15 +116,6 @@ class MFENitroConnector(BaseConnector):
             self._headers = {'X-Xsrf-Token': login_response.headers['Xsrf-Token']}
 
         return phantom.APP_SUCCESS
-
-    def _delete_session(self):
-
-        ret_val, ack_data = self._make_rest_call(ActionResult(), "logout", method="delete")
-
-        if phantom.is_fail(ret_val):
-            self.save_progress("Unable to logout, non-fatal, ignoring")
-
-        return ret_val
 
     def _handle_error_response(self, response, result):
 
@@ -527,7 +514,11 @@ class MFENitroConnector(BaseConnector):
         for field in fields:
             field_list.append({"name": field})
 
-        event_id = param['event_id']
+        try:
+            event_id = int(param['event_id'])
+        except ValueError:
+            return action_result.set_status(phantom.APP_ERROR, "Expected an integer in the event_id field.")
+
         if self._version == '9':
             event_id = {"value": event_id}
 
