@@ -12,7 +12,7 @@
     "product_vendor": "McAfee",
     "product_name": "McAfee ESM",
     "product_version_regex": ".*",
-    "min_phantom_version": "3.5.180",
+    "min_phantom_version": "3.5.210",
     "logo": "logo_mcafee_esm.svg",
     "logo_dark": "logo_mcafee_dark_esm.svg",
     "license": "Copyright (c) 2016-2018 Splunk Inc.",
