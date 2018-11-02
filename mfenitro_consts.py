@@ -1,15 +1,10 @@
 # --
 # File: mfenitro_consts.py
 #
-# Copyright (c) Phantom Cyber Corporation, 2016-2018
+# Copyright (c) 2016-2018 Splunk Inc.
 #
-# This unpublished material is proprietary to Phantom Cyber.
-# All rights reserved. The methods and
-# techniques described herein are considered trade secrets
-# and/or confidential. Reproduction or distribution, in whole
-# or in part, is forbidden except by express written permission
-# of Phantom Cyber Corporation.
-#
+# SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
+# without a valid written license from Splunk Inc. is PROHIBITED.
 # --
 
 # NITRO_JSON_POLL_HOURS = "poll_hours"
@@ -21,21 +16,21 @@ NITRO_JSON_FIRST_MAX_CONTAINERS = "first_run_max_events"
 NITRO_JSON_FILTERS = "filters"
 NITRO_JSON_QUERY_TIMEOUT = "query_timeout"
 
+NITRO_BASE_URL = "{0}/rs/esm/"
+GET_STATUS_URL = "qryGetStatus"
+GET_EVENTS_URL = "qryGetCorrEventDataForID?queryType=EVENT"
 TEST_QUERY = "qryGetSelectFields?type=EVENT&groupType=NO_GROUP"
-NITRO_BASE_URL = "%s/rs/esm/"
-LOGIN_URL = '%s/rs/esm/login'
 EXECUTE_QUERY_URL = "qryExecuteDetail?type=EVENT&reverse=false"
+GET_ALARMS_URL = "alarmGetTriggeredAlarms"
+GET_RESULTS_URL = "qryGetResults?startPos=0&numRows=1000000&reverse=false"
+
 CEF_MAP = {"dstMac": "destinationMacAddress", "dstIP": "destinationAddress", "srcIP": "sourceAddress", "srcMac": "sourceMacAddress"}
 QUERY_MAX_WAIT_TIME = 5
-GET_RESULTS_URL = "qryGetResults?startPos=0&numRows=1000000&reverse=false"
-GET_STATUS_URL = "qryGetStatus"
-DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
-# DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.000%z"
-NITRO_RESP_DATETIME_FORMAT = "%m/%d/%Y %H:%M:%S"
 CEF_EXCLUDE = [u'', '', "0", u'0']
 ID_DICT = {'name': 'Alert.ID'}
 FIRST_DICT = {'name': 'Alert.FirstTime'}
 MSG_DICT = {'name': 'Rule.msg'}
+DEFAULT_FIELD_LIST = ["LastTime", "Rule.msg", "DSIDSigID", "SrcIP", "DstIP"]
 cef_field_list = ['startTime', 'destinationUserName', 'destinationAddress', 'destinationMacAddress',
         'destinationPort', 'receiptTime', 'transportProtocol', 'sourceMacAddress',
         'sourcePort', 'applicationProtocol', 'deviceExternalId', 'sourceUserName',
@@ -46,8 +41,10 @@ CREATE_CONTAINER_RESPONSE = "save_container returns, value: {0}, reason: {1}, id
 NITRO_DEFAULT_TIMEOUT_SECS = 20
 NITRO_QUERY_TIMEOUT_ERR = "Query not completed in the configured time. Please increase the query_timeout value in the asset config and try again."
 
+DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+NITRO_RESP_DATETIME_FORMAT = "%m/%d/%Y %H:%M:%S"
+
 NITRO_DEFAULT_MAX_CONTAINERS = 10
-# NITRO_DEFAULT_POLL_HOURS = 1
 NITRO_CEF_CONTAINS = {
         'nDDeviceNDDevIDDstManagementIP': ['ip'],
         'nDDeviceNDDevIDSrcManagementIP': ['ip'],
@@ -55,5 +52,6 @@ NITRO_CEF_CONTAINS = {
         'alertSrcIP': ['ip'],
         'alertDstMac': ['mac address'],
         'alertSrcMac': ['mac address'],
-        'userIDSrc': ['user name']}
+        'userIDSrc': ['user name'],
+        'alertAlertID': ['esm event id']}
 NITRO_POLL_TIME_DEFAULT = "2"

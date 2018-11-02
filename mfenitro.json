@@ -2,20 +2,20 @@
     "appid": "1d20c51a-7f60-465b-a8e3-fc02967bec4d",
     "deprecated_appid": "161ce6ea-c214-48e9-8bd9-56b73dffa7da",
     "name": "McAfee ESM",
-    "description": "This app ingests data from a McAfee ESM device. Each event is parsed into a container and various event characteristics like the Rule, Signature and actionName are ingested into the event artifact.",
+    "description": "This app integrates with an instance of McAfee ESM to perform investigative and ingestion actions",
     "publisher": "Phantom",
     "type": "siem",
     "main_module": "mfenitro_connector.pyc",
-    "app_version": "1.0.68",
-    "utctime_updated": "2018-02-08T19:07:51.000000Z",
+    "app_version": "2.0.4",
+    "utctime_updated": "2018-10-30T18:27:55.000000Z",
     "package_name": "phantom_mfeesm",
     "product_vendor": "McAfee",
     "product_name": "McAfee ESM",
     "product_version_regex": ".*",
-    "min_phantom_version": "3.0.190",
+    "min_phantom_version": "3.5.210",
     "logo": "logo_mcafee_esm.svg",
     "logo_dark": "logo_mcafee_dark_esm.svg",
-    "license": "Copyright (c) Phantom Cyber Corporation, 2016-2018",
+    "license": "Copyright (c) 2016-2018 Splunk Inc.",
     "configuration": {
         "base_url": {
             "data_type": "string",
@@ -42,43 +42,64 @@
             "order": 3,
             "required": true
         },
+        "version": {
+            "data_type": "string",
+            "description": "Version",
+            "order": 4,
+            "value_list": [
+                "9",
+                "10"
+            ],
+            "default": "9",
+            "required": false
+        },
+        "ingest_data": {
+            "data_type": "string",
+            "description": "Type of data to ingest",
+            "value_list": [
+                "Events",
+                "Alarms"
+            ],
+            "default": "Events",
+            "order": 5
+        },
         "filters": {
             "data_type": "string",
             "description": "List of filters (JSON)",
-            "order": 4,
+            "order": 6,
             "required": false
         },
         "max_containers": {
             "data_type": "numeric",
-            "description": "Maximum events for scheduled polling",
-            "order": 5,
+            "description": "Maximum objects for scheduled polling",
+            "order": 7,
             "default": 100,
             "required": true
         },
         "first_run_max_events": {
             "data_type": "numeric",
-            "order": 6,
-            "description": "Maximum events to poll first time",
+            "order": 8,
+            "description": "Maximum objects to poll first time",
             "default": 2000,
             "required": true
         },
         "poll_time": {
             "data_type": "numeric",
-            "order": 7,
-            "description": "Ingest events in last N minutes (POLL NOW and First Run)",
+            "order": 9,
+            "description": "Ingest objects in last N minutes (POLL NOW and First Run)",
             "default": 2,
             "required": false
         },
         "query_timeout": {
             "data_type": "numeric",
-            "order": 8,
+            "order": 10,
             "description": "Max Time to wait for query to finish (seconds)",
             "default": 20,
             "required": false
         },
         "timezone": {
             "data_type": "timezone",
-            "order": 9,
+            "order": 11,
             "description": "Timezone configured on device",
             "required": true
         }
@@ -118,7 +139,7 @@
                     "data_path": "action_result.data.*.types",
                     "data_type": "string",
                     "column_name": "Types",
-                    "column_order": 0
+                    "column_order": 1
                 },
                 {
                     "data_path": "action_result.status",
@@ -145,35 +166,372 @@
         },
         {
             "action": "on poll",
-            "description": "Callback action for the on_poll ingest functionality.",
+            "description": "Ingest Events or Alarms from ESM",
             "type": "ingest",
             "identifier": "on_poll",
             "read_only": true,
             "parameters": {
                 "start_time": {
                     "data_type": "numeric",
-                    "description": "Start of time range, in epoch time (milliseconds)",
-                    "verbose": "If not specified, the default is past 10 days"
+                    "description": "Start of time range, in epoch time (milliseconds)"
                 },
                 "end_time": {
                     "data_type": "numeric",
-                    "description": "End of time range, in epoch time (milliseconds)",
-                    "verbose": "If not specified, the default is now"
+                    "description": "End of time range, in epoch time (milliseconds)"
                 },
                 "container_count": {
                     "data_type": "numeric",
-                    "description": "Maximum number of container records to query for",
-                    "required": true,
-                    "value": 100
+                    "description": "Maximum number of container records to query for"
                 },
                 "artifact_count": {
                     "data_type": "numeric",
-                    "description": "Maximum number of artifact records to query for",
-                    "required": true,
-                    "value": 100
+                    "description": "Maximum number of artifact records to query for"
                 }
             },
             "output": [],
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "list watchlists",
+            "description": "List the watchlists configured in ESM",
+            "type": "investigate",
+            "identifier": "list_watchlists",
+            "read_only": true,
+            "parameters": {},
+            "render": {
+                "width": 12,
+                "title": "List Watchlists",
+                "type": "table",
+                "height": 5
+            },
+            "output": [
+                {
+                    "data_path": "action_result.data.*.name",
+                    "data_type": "string",
+                    "column_name": "Watchlist Name",
+                    "column_order": 0
+                },
+                {
+                    "data_path": "action_result.data.*.customType.name",
+                    "data_type": "string",
+                    "column_name": "Watchlist Type",
+                    "column_order": 1
+                },
+                {
+                    "data_path": "action_result.data.*.id.value",
+                    "data_type": "numeric",
+                    "column_name": "Watchlist ID",
+                    "contains": [
+                        "esm watchlist id"
+                    ],
+                    "column_order": 3
+                },
+                {
+                    "data_path": "action_result.data.*.valueCount",
+                    "data_type": "numeric",
+                    "column_name": "Number of Entries",
+                    "column_order": 2
+                },
+                {
+                    "data_path": "action_result.data.*.scored",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.errorMsg",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.dynamic",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.source",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.active",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.type.name",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.total_fields",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "get events",
+            "description": "Get the events associated with a correlated event ID",
+            "type": "investigate",
+            "identifier": "get_events",
+            "read_only": true,
+            "parameters": {
+                "event_id": {
+                    "data_type": "numeric",
+                    "order": 0,
+                    "description": "Event ID in the McAfee ESM",
+                    "verbose": "Usually a simple integer",
+                    "contains": [
+                        "esm event id"
+                    ],
+                    "primary": true,
+                    "required": true
+                },
+                "field_list": {
+                    "data_type": "string",
+                    "order": 1,
+                    "description": "Comma separated list of event fields to get",
+                    "required": false
+                }
+            },
+            "render": {
+                "width": 12,
+                "title": "Get Events",
+                "type": "table",
+                "height": 5
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.field_list",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.event_id",
+                    "data_type": "string",
+                    "contains": [
+                        "esm event id"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.Rule_msg",
+                    "data_type": "string",
+                    "column_name": "Rule Message",
+                    "column_order": 0
+                },
+                {
+                    "data_path": "action_result.data.*.DSIDSigID",
+                    "data_type": "string",
+                    "column_name": "Signature ID",
+                    "column_order": 1
+                },
+                {
+                    "data_path": "action_result.data.*.SrcIP",
+                    "data_type": "string",
+                    "column_name": "Source IP",
+                    "column_order": 2
+                },
+                {
+                    "data_path": "action_result.data.*.DstIP",
+                    "data_type": "string",
+                    "column_name": "Destination IP",
+                    "column_order": 3
+                },
+                {
+                    "data_path": "action_result.data.*.LastTime",
+                    "data_type": "string",
+                    "column_name": "Last Time",
+                    "column_order": 4
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.total_values",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "get watchlist",
+            "description": "Get the details for a specific watchlist and the values in that watchlist as configured in the ESM",
+            "type": "investigate",
+            "identifier": "get_watchlist",
+            "read_only": true,
+            "parameters": {
+                "watchlist_id": {
+                    "data_type": "numeric",
+                    "order": 0,
+                    "description": "Watchlist ID in the McAfee ESM",
+                    "verbose": "Usually a simple integer",
+                    "contains": [
+                        "esm watchlist id"
+                    ],
+                    "primary": true,
+                    "required": true
+                }
+            },
+            "render": {
+                "width": 12,
+                "title": "Get Watchlist",
+                "type": "table",
+                "height": 5
+            },
+            "output": [
+                {
+                    "data_path": "action_result.parameter.watchlist_id",
+                    "data_type": "string",
+                    "contains": [
+                        "esm watchlist id"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.name",
+                    "data_type": "string",
+                    "column_name": "Watchlist Name",
+                    "column_order": 0
+                },
+                {
+                    "data_path": "action_result.summary.type",
+                    "data_type": "string",
+                    "column_name": "Watchlist Type",
+                    "column_order": 1
+                },
+                {
+                    "data_path": "action_result.data.*.values",
+                    "data_type": "string",
+                    "column_name": "Watchlist Values",
+                    "column_order": 2
+                },
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.total_values",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "update watchlist",
+            "description": "Add an entry to a specific watchlist as configured in the ESM",
+            "type": "correct",
+            "identifier": "update_watchlist",
+            "read_only": false,
+            "parameters": {
+                "watchlist_id": {
+                    "data_type": "numeric",
+                    "order": 0,
+                    "description": "Watchlist ID in the McAfee ESM",
+                    "verbose": "Usually a simple integer",
+                    "contains": [
+                        "esm watchlist id"
+                    ],
+                    "primary": true,
+                    "required": true
+                },
+                "values_to_add": {
+                    "data_type": "string",
+                    "order": 0,
+                    "description": "Comma separated list of values to add to the watchlist. (e.g. '10.10.10.10, 192.168.1.4, 172.16.32.32')",
+                    "verbose": "Values must be appropriate for the type of watchlist to be updated",
+                    "required": true
+                }
+            },
+            "render": {
+                "width": 12,
+                "title": "Update Watchlist",
+                "type": "table",
+                "height": 5
+            },
+            "output": [
+                {
+                    "data_path": "action_result.parameter.values_to_add",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.watchlist_id",
+                    "data_type": "string",
+                    "contains": [
+                        "esm watchlist id"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.name",
+                    "data_type": "string",
+                    "column_name": "Watchlist Name",
+                    "column_order": 0
+                },
+                {
+                    "data_path": "action_result.summary.type",
+                    "data_type": "string",
+                    "column_name": "Watchlist Type",
+                    "column_order": 1
+                },
+                {
+                    "data_path": "action_result.data.*.values",
+                    "data_type": "string",
+                    "column_name": "Watchlist Values",
+                    "column_order": 2
+                },
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.total_values",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
             "versions": "EQ(*)"
         }
     ]
