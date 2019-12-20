@@ -1,7 +1,5 @@
-# --
 # File: mfenitro_connector.py
-#
-# Copyright (c) 2016-2018 Splunk Inc.
+# Copyright (c) 2016-2019 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -514,11 +512,7 @@ class MFENitroConnector(BaseConnector):
         for field in fields:
             field_list.append({"name": field})
 
-        try:
-            event_id = int(param['event_id'])
-        except ValueError:
-            return action_result.set_status(phantom.APP_ERROR, "Expected an integer in the event_id field.")
-
+        event_id = param['event_id']
         if self._version == '9':
             event_id = {"value": event_id}
 

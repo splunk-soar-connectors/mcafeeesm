@@ -3,7 +3,7 @@
     "deprecated_appid": "161ce6ea-c214-48e9-8bd9-56b73dffa7da",
     "name": "McAfee ESM",
     "description": "This app integrates with an instance of McAfee ESM to perform investigative and ingestion actions",
-    "publisher": "Phantom",
+    "publisher": "Splunk",
     "type": "siem",
     "main_module": "mfenitro_connector.pyc",
     "app_version": "2.0.6",
@@ -15,7 +15,7 @@
     "min_phantom_version": "3.5.210",
     "logo": "logo_mcafee_esm.svg",
     "logo_dark": "logo_mcafee_dark_esm.svg",
-    "license": "Copyright (c) 2016-2018 Splunk Inc.",
+    "license": "Copyright (c) 2016-2019 Splunk Inc.",
     "configuration": {
         "base_url": {
             "data_type": "string",
@@ -287,7 +287,7 @@
             "read_only": true,
             "parameters": {
                 "event_id": {
-                    "data_type": "numeric",
+                    "data_type": "string",
                     "order": 0,
                     "description": "Event ID in the McAfee ESM",
                     "verbose": "Usually a simple integer",
