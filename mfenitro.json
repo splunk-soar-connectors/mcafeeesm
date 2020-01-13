@@ -48,7 +48,8 @@
             "order": 4,
             "value_list": [
                 "9",
-                "10"
+                "10", 
+                "11"
             ],
             "default": "9",
             "required": false
@@ -289,7 +290,7 @@
                 "event_id": {
                     "data_type": "string",
                     "order": 0,
-                    "description": "Event ID in the McAfee ESM",
+                    "description": "Signature Event ID in the McAfee ESM",
                     "verbose": "Usually a simple integer",
                     "contains": [
                         "esm event id"

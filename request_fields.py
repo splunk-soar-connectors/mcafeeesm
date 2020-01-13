@@ -33,6 +33,22 @@ alarm_fields_list = [
     {u'name': u'AlarmTriggerDate'}
 ]
 
+# These were originally in event_fields_list, but throw errors for version 11 ESM
+event_fields_list_if_not_version_11 = [
+    {u'name': u'NDDevIDDst'},
+    {u'name': u'NDDevIDSrc'},
+    {u'name': u'NDDevIFDst'},
+    {u'name': u'NDDevIFSrc'},
+    {u'name': u'NDDeviceInterface_NDDevIFDst.Name'},
+    {u'name': u'NDDevice_NDDevIDDst.ManagementIP'},
+    {u'name': u'NDDevice_NDDevIDDst.SystemName'},
+    {u'name': u'NDDeviceInterface_NDDevIFSrc.Name'},
+    {u'name': u'NDDevice_NDDevIDSrc.ManagementIP'},
+    {u'name': u'NDDevice_NDDevIDSrc.SystemName'},
+    {u'name': u'NDIFIDDst'},
+    {u'name': u'NDIFIDSrc'}
+]
+
 event_fields_list = [
     {u'name': u'Access_Mask'},
     {u'name': u'Access_Privileges'},
@@ -44,16 +60,12 @@ event_fields_list = [
     {u'name': u'DstMac'},
     {u'name': u'DstPort'},
     {u'name': u'ZoneDst'},
-    {u'name': u'NDDevIDDst'},
-    {u'name': u'NDDevIDSrc'},
     {u'name': u'DSID'},
     {u'name': u'DSIDSigID'},
     {u'name': u'WriteTime'},
     {u'name': u'EventCount'},
     {u'name': u'Flow'},
     {u'name': u'ID'},
-    {u'name': u'NDDevIFDst'},
-    {u'name': u'NDDevIFSrc'},
     {u'name': u'AlertID'},
     {u'name': u'IPSID'},
     {u'name': u'LastTime'},
@@ -106,9 +118,6 @@ event_fields_list = [
     {u'name': u'DB2_Plan_Name'},
     {u'name': u'Delivery_ID'},
     {u'name': u'Description'},
-    {u'name': u'NDDeviceInterface_NDDevIFDst.Name'},
-    {u'name': u'NDDevice_NDDevIDDst.ManagementIP'},
-    {u'name': u'NDDevice_NDDevIDDst.SystemName'},
     {u'name': u'GUIDDst'},
     {u'name': u'DstIP'},
     {u'name': u'Zone_ZoneDst.Name'},
@@ -192,8 +201,6 @@ event_fields_list = [
     {u'name': u'Incoming_ID'},
     {u'name': u'Instance_GUID'},
     {u'name': u'Interface'},
-    {u'name': u'NDIFIDDst'},
-    {u'name': u'NDIFIDSrc'},
     {u'name': u'Interface_Dest'},
     {u'name': u'IPS.Name'},
     {u'name': u'Job_Name'},
@@ -288,9 +295,6 @@ event_fields_list = [
     {u'name': u'SNMP_Operation'},
     {u'name': u'SNMP_Version'},
     {u'name': u'GUIDSrc'},
-    {u'name': u'NDDeviceInterface_NDDevIFSrc.Name'},
-    {u'name': u'NDDevice_NDDevIDSrc.ManagementIP'},
-    {u'name': u'NDDevice_NDDevIDSrc.SystemName'},
     {u'name': u'Zone_ZoneSrc.Name'},
     {u'name': u'Source_Context'},
     {u'name': u'Source_Logon_ID'},
