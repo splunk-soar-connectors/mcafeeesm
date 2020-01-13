@@ -15,7 +15,7 @@
     "min_phantom_version": "3.5.210",
     "logo": "logo_mcafee_esm.svg",
     "logo_dark": "logo_mcafee_dark_esm.svg",
-    "license": "Copyright (c) 2016-2019 Splunk Inc.",
+    "license": "Copyright (c) 2016-2020 Splunk Inc.",
     "configuration": {
         "base_url": {
             "data_type": "string",
@@ -48,7 +48,7 @@
             "order": 4,
             "value_list": [
                 "9",
-                "10", 
+                "10",
                 "11"
             ],
             "default": "9",
