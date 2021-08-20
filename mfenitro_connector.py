@@ -1,7 +1,5 @@
-# --
 # File: mfenitro_connector.py
-#
-# Copyright (c) 2016-2018 Splunk Inc.
+# Copyright (c) 2016-2020 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -101,7 +99,7 @@ class MFENitroConnector(BaseConnector):
         try:
             if self._version == '9':
                 login_response = self._session.post(login_url, auth=(self._username, self._password), verify=self._verify)
-            elif self._version == '10':
+            elif self._version == '10' or self._version == '11':
                 body = {'username': self._username, 'password': self._password, 'locale': 'en_US'}
                 login_response = self._session.post(login_url, json=body, verify=self._verify)
         except Exception as e:
@@ -110,7 +108,7 @@ class MFENitroConnector(BaseConnector):
         if not 200 <= login_response.status_code < 300:
             return self._handle_error_response(login_response, action_result)
 
-        if self._version == '10':
+        if self._version == '10' or self._version == '11':
             if 'Xsrf-Token' not in login_response.headers:
                 return action_result.set_status(phantom.APP_ERROR, "Error creating session: Xsrf-Token not found in login response.")
             self._headers = {'X-Xsrf-Token': login_response.headers['Xsrf-Token']}
@@ -139,7 +137,7 @@ class MFENitroConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, "API Unsupported method: {0}".format(method)), None
 
         headers = None
-        if self._version == '10':
+        if self._version == '10' or self._version == '11':
             headers = self._headers
 
         try:
@@ -514,11 +512,7 @@ class MFENitroConnector(BaseConnector):
         for field in fields:
             field_list.append({"name": field})
 
-        try:
-            event_id = int(param['event_id'])
-        except ValueError:
-            return action_result.set_status(phantom.APP_ERROR, "Expected an integer in the event_id field.")
-
+        event_id = param['event_id']
         if self._version == '9':
             event_id = {"value": event_id}
 
@@ -674,8 +668,24 @@ class MFENitroConnector(BaseConnector):
             req_block['config']['fields'].extend(field_list)
             req_block['config']['fields'].extend(request_fields.common_fields)
 
+            if self._version != '11':
+                req_block['config']['fields'].extend(request_fields.event_fields_list_if_not_version_11)
+
             if (filter_dict):
                 req_block['config']['filters'] = filter_dict
+
+            if self._version == '11':
+                req_block['config']['filters'] = [
+                    {
+                        "type": "EsmFieldFilter",
+                        "field": {"name": "Rule.msg"},
+                        "operator": "IN",
+                        "values": [{
+                            "type": "EsmWatchlistValue",
+                            "watchlist": 0
+                        }]
+                    }
+                ]
 
         block_length = 50 - len(request_fields.common_fields)
 
@@ -728,7 +738,7 @@ class MFENitroConnector(BaseConnector):
         ret_val, ret_data = self._make_rest_call(action_result, GET_RESULTS_URL, data=result_req_json)
 
         if phantom.is_fail(ret_val):
-            return action_result.get_status(), None
+            ret_data = {}
 
         return phantom.APP_SUCCESS, ret_data
 
@@ -790,8 +800,8 @@ class MFENitroConnector(BaseConnector):
             date_strings = set(date_strings)
 
             if len(date_strings) == 1:
-                self.debug_print("Getting all containers with the same date, down to the second." +
-                        " That means the device is generating max_containers=({0}) per second.".format(config[NITRO_JSON_MAX_CONTAINERS]) +
+                self.debug_print("Getting all containers with the same date, down to the second." +  # noqa
+                        " That means the device is generating max_containers=({0}) per second.".format(config[NITRO_JSON_MAX_CONTAINERS]) +  # noqa
                         " Skipping to the next second to not get stuck.")
                 self._state[NITRO_JSON_LAST_DATE_TIME] = self._get_next_start_time(self._state[NITRO_JSON_LAST_DATE_TIME])
 
@@ -891,7 +901,7 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Got more alarms than limit. Trimming number of alarms from {0} to {1}".format(len(resp_data), limit))
             resp_data = resp_data[:limit]
             if not self.is_poll_now():
-                self._state[NITRO_JSON_LAST_DATE_TIME] = (datetime.strptime(resp_data[-1]['triggeredDate'], NITRO_RESP_DATETIME_FORMAT) +
+                self._state[NITRO_JSON_LAST_DATE_TIME] = (datetime.strptime(resp_data[-1]['triggeredDate'], NITRO_RESP_DATETIME_FORMAT) +  # noqa
                         timedelta(seconds=1)).strftime(DATETIME_FORMAT)
 
         containers = []
@@ -999,13 +1009,10 @@ class MFENitroConnector(BaseConnector):
             if i == 0:
                 self.save_progress("Got {0} event{1}", no_of_events, '' if (no_of_events == 1) else 's')
 
-            if not rows:
-                return action_result.set_status(phantom.APP_SUCCESS)
-
             if i == 0:
                 result_rows = [dict() for x in range(0, no_of_events)]
 
-            # The app makes multiple queries to the device, each time asking for a list of fields for max number of events that occured between a time range
+            # The app makes multiple queries to the device, each time asking for a list of fields for max number of events that occurred between a time range
             # What that means is that in the Nth iteration where N > 0 we might get more events, than when N == 0.
             # This means there was a new event generated in the same time range that we are querying, since we are sorting it ASCENDING it will be at the end
             # and should be dropped.
@@ -1066,10 +1073,10 @@ class MFENitroConnector(BaseConnector):
 
 if __name__ == '__main__':
 
-    # import pudb
+    import pudb
     import argparse
 
-    # pudb.set_trace()
+    pudb.set_trace()
 
     argparser = argparse.ArgumentParser()
 

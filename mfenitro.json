@@ -3,11 +3,11 @@
     "deprecated_appid": "161ce6ea-c214-48e9-8bd9-56b73dffa7da",
     "name": "McAfee ESM",
     "description": "This app integrates with an instance of McAfee ESM to perform investigative and ingestion actions",
-    "publisher": "Phantom",
+    "publisher": "Splunk",
     "type": "siem",
     "main_module": "mfenitro_connector.pyc",
-    "app_version": "2.0.6",
-    "utctime_updated": "2018-12-07T02:01:12.000000Z",
+    "app_version": "2.0.8",
+    "utctime_updated": "2020-01-13T23:40:42.000000Z",
     "package_name": "phantom_mfeesm",
     "product_vendor": "McAfee",
     "product_name": "McAfee ESM",
@@ -15,7 +15,7 @@
     "min_phantom_version": "3.5.210",
     "logo": "logo_mcafee_esm.svg",
     "logo_dark": "logo_mcafee_dark_esm.svg",
-    "license": "Copyright (c) 2016-2018 Splunk Inc.",
+    "license": "Copyright (c) 2016-2020 Splunk Inc.",
     "configuration": {
         "base_url": {
             "data_type": "string",
@@ -48,7 +48,8 @@
             "order": 4,
             "value_list": [
                 "9",
-                "10"
+                "10",
+                "11"
             ],
             "default": "9",
             "required": false
@@ -287,9 +288,9 @@
             "read_only": true,
             "parameters": {
                 "event_id": {
-                    "data_type": "numeric",
+                    "data_type": "string",
                     "order": 0,
-                    "description": "Event ID in the McAfee ESM",
+                    "description": "Signature Event ID in the McAfee ESM",
                     "verbose": "Usually a simple integer",
                     "contains": [
                         "esm event id"
