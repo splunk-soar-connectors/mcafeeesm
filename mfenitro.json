@@ -5,17 +5,18 @@
     "description": "This app integrates with an instance of McAfee ESM to perform investigative and ingestion actions",
     "publisher": "Splunk",
     "type": "siem",
-    "main_module": "mfenitro_connector.pyc",
-    "app_version": "2.0.8",
+    "main_module": "mfenitro_connector.py",
+    "app_version": "3.0.0",
     "utctime_updated": "2020-01-13T23:40:42.000000Z",
     "package_name": "phantom_mfeesm",
     "product_vendor": "McAfee",
     "product_name": "McAfee ESM",
     "product_version_regex": ".*",
-    "min_phantom_version": "3.5.210",
+    "min_phantom_version": "4.9.39220",
+    "python_version": "3",
     "logo": "logo_mcafee_esm.svg",
     "logo_dark": "logo_mcafee_dark_esm.svg",
-    "license": "Copyright (c) 2016-2020 Splunk Inc.",
+    "license": "Copyright (c) 2016-2021 Splunk Inc.",
     "configuration": {
         "base_url": {
             "data_type": "string",
@@ -51,8 +52,7 @@
                 "10",
                 "11"
             ],
-            "default": "9",
-            "required": false
+            "default": "9"
         },
         "ingest_data": {
             "data_type": "string",
@@ -67,8 +67,7 @@
         "filters": {
             "data_type": "string",
             "description": "List of filters (JSON)",
-            "order": 6,
-            "required": false
+            "order": 6
         },
         "max_containers": {
             "data_type": "numeric",
@@ -88,15 +87,13 @@
             "data_type": "numeric",
             "order": 9,
             "description": "Ingest objects in last N minutes (POLL NOW and First Run)",
-            "default": 2,
-            "required": false
+            "default": 2
         },
         "query_timeout": {
             "data_type": "numeric",
             "order": 10,
             "description": "Max Time to wait for query to finish (seconds)",
-            "default": 20,
-            "required": false
+            "default": 20
         },
         "timezone": {
             "data_type": "timezone",
@@ -112,9 +109,9 @@
             "type": "test",
             "identifier": "test_asset_connectivity",
             "read_only": true,
+            "parameters": {},
             "output": [],
-            "versions": "EQ(*)",
-            "parameters": {}
+            "versions": "EQ(*)"
         },
         {
             "action": "list fields",
@@ -123,12 +120,6 @@
             "identifier": "list_fields",
             "read_only": true,
             "parameters": {},
-            "render": {
-                "width": 12,
-                "title": "List Fields",
-                "type": "table",
-                "height": 5
-            },
             "output": [
                 {
                     "data_path": "action_result.data.*.name",
@@ -144,7 +135,11 @@
                 },
                 {
                     "data_path": "action_result.status",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
                 },
                 {
                     "data_path": "action_result.message",
@@ -156,13 +151,25 @@
                 },
                 {
                     "data_path": "summary.total_objects",
-                    "data_type": "numeric"
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
                 },
                 {
                     "data_path": "summary.total_objects_successful",
-                    "data_type": "numeric"
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
                 }
             ],
+            "render": {
+                "width": 12,
+                "title": "List Fields",
+                "type": "table",
+                "height": 5
+            },
             "versions": "EQ(*)"
         },
         {
@@ -199,12 +206,6 @@
             "identifier": "list_watchlists",
             "read_only": true,
             "parameters": {},
-            "render": {
-                "width": 12,
-                "title": "List Watchlists",
-                "type": "table",
-                "height": 5
-            },
             "output": [
                 {
                     "data_path": "action_result.data.*.name",
@@ -230,7 +231,7 @@
                 {
                     "data_path": "action_result.data.*.valueCount",
                     "data_type": "numeric",
-                    "column_name": "Number of Entries",
+                    "column_name": "Number Of Entries",
                     "column_order": 2
                 },
                 {
@@ -259,7 +260,11 @@
                 },
                 {
                     "data_path": "action_result.status",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
                 },
                 {
                     "data_path": "action_result.message",
@@ -271,13 +276,25 @@
                 },
                 {
                     "data_path": "summary.total_objects",
-                    "data_type": "numeric"
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
                 },
                 {
                     "data_path": "summary.total_objects_successful",
-                    "data_type": "numeric"
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
                 }
             ],
+            "render": {
+                "width": 12,
+                "title": "List Watchlists",
+                "type": "table",
+                "height": 5
+            },
             "versions": "EQ(*)"
         },
         {
@@ -291,7 +308,6 @@
                     "data_type": "string",
                     "order": 0,
                     "description": "Signature Event ID in the McAfee ESM",
-                    "verbose": "Usually a simple integer",
                     "contains": [
                         "esm event id"
                     ],
@@ -301,20 +317,17 @@
                 "field_list": {
                     "data_type": "string",
                     "order": 1,
-                    "description": "Comma separated list of event fields to get",
-                    "required": false
+                    "description": "Comma separated list of event fields to get"
                 }
-            },
-            "render": {
-                "width": 12,
-                "title": "Get Events",
-                "type": "table",
-                "height": 5
             },
             "output": [
                 {
                     "data_path": "action_result.status",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
                 },
                 {
                     "data_path": "action_result.parameter.field_list",
@@ -367,13 +380,25 @@
                 },
                 {
                     "data_path": "summary.total_objects",
-                    "data_type": "numeric"
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
                 },
                 {
                     "data_path": "summary.total_objects_successful",
-                    "data_type": "numeric"
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
                 }
             ],
+            "render": {
+                "width": 12,
+                "title": "Get Events",
+                "type": "table",
+                "height": 5
+            },
             "versions": "EQ(*)"
         },
         {
@@ -387,19 +412,12 @@
                     "data_type": "numeric",
                     "order": 0,
                     "description": "Watchlist ID in the McAfee ESM",
-                    "verbose": "Usually a simple integer",
                     "contains": [
                         "esm watchlist id"
                     ],
                     "primary": true,
                     "required": true
                 }
-            },
-            "render": {
-                "width": 12,
-                "title": "Get Watchlist",
-                "type": "table",
-                "height": 5
             },
             "output": [
                 {
@@ -429,7 +447,11 @@
                 },
                 {
                     "data_path": "action_result.status",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
                 },
                 {
                     "data_path": "action_result.message",
@@ -441,13 +463,25 @@
                 },
                 {
                     "data_path": "summary.total_objects",
-                    "data_type": "numeric"
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
                 },
                 {
                     "data_path": "summary.total_objects_successful",
-                    "data_type": "numeric"
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
                 }
             ],
+            "render": {
+                "width": 12,
+                "title": "Get Watchlist",
+                "type": "table",
+                "height": 5
+            },
             "versions": "EQ(*)"
         },
         {
@@ -461,7 +495,6 @@
                     "data_type": "numeric",
                     "order": 0,
                     "description": "Watchlist ID in the McAfee ESM",
-                    "verbose": "Usually a simple integer",
                     "contains": [
                         "esm watchlist id"
                     ],
@@ -470,17 +503,10 @@
                 },
                 "values_to_add": {
                     "data_type": "string",
-                    "order": 0,
+                    "order": 1,
                     "description": "Comma separated list of values to add to the watchlist. (e.g. '10.10.10.10, 192.168.1.4, 172.16.32.32')",
-                    "verbose": "Values must be appropriate for the type of watchlist to be updated",
                     "required": true
                 }
-            },
-            "render": {
-                "width": 12,
-                "title": "Update Watchlist",
-                "type": "table",
-                "height": 5
             },
             "output": [
                 {
@@ -514,7 +540,11 @@
                 },
                 {
                     "data_path": "action_result.status",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
                 },
                 {
                     "data_path": "action_result.message",
@@ -526,13 +556,25 @@
                 },
                 {
                     "data_path": "summary.total_objects",
-                    "data_type": "numeric"
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
                 },
                 {
                     "data_path": "summary.total_objects_successful",
-                    "data_type": "numeric"
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
                 }
             ],
+            "render": {
+                "width": 12,
+                "title": "Update Watchlist",
+                "type": "table",
+                "height": 5
+            },
             "versions": "EQ(*)"
         }
     ]

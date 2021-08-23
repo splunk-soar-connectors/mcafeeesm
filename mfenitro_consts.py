@@ -53,3 +53,8 @@ NITRO_CEF_CONTAINS = {
         'userIDSrc': ['user name'],
         'alertAlertID': ['esm event id']}
 NITRO_POLL_TIME_DEFAULT = "2"
+
+# Error message constants
+NITRO_ERR_CODE_MSG = "Error code unavailable"
+NITRO_ERR_MSG_UNAVAILABLE = "Error message unavailable. Please check the asset configuration and|or action parameters"
+NITRO_PARSE_ERR_MSG = "Unable to parse the error message. Please check the asset configuration and|or action parameters"
