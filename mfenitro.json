@@ -122,6 +122,14 @@
             "parameters": {},
             "output": [
                 {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
+                },
+                {
                     "data_path": "action_result.data.*.name",
                     "data_type": "string",
                     "column_name": "Field Name",
@@ -134,20 +142,19 @@
                     "column_order": 1
                 },
                 {
-                    "data_path": "action_result.status",
-                    "data_type": "string",
+                    "data_path": "action_result.summary.total_fields",
+                    "data_type": "numeric",
                     "example_values": [
-                        "success",
-                        "failed"
+                        234
                     ]
+
                 },
                 {
                     "data_path": "action_result.message",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.summary.total_fields",
-                    "data_type": "numeric"
+                    "data_type": "string",
+                    "example_values": [
+                        "Total fields: 234"
+                    ]
                 },
                 {
                     "data_path": "summary.total_objects",
@@ -208,6 +215,14 @@
             "parameters": {},
             "output": [
                 {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
+                },
+                {
                     "data_path": "action_result.data.*.name",
                     "data_type": "string",
                     "column_name": "Watchlist Name",
@@ -215,9 +230,7 @@
                 },
                 {
                     "data_path": "action_result.data.*.customType.name",
-                    "data_type": "string",
-                    "column_name": "Watchlist Type",
-                    "column_order": 1
+                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.data.*.id.value",
@@ -236,7 +249,11 @@
                 },
                 {
                     "data_path": "action_result.data.*.scored",
-                    "data_type": "string"
+                    "data_type": "boolean",
+                    "example_values": [
+                        true,
+                        false
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.errorMsg",
@@ -244,35 +261,69 @@
                 },
                 {
                     "data_path": "action_result.data.*.dynamic",
-                    "data_type": "string"
+                    "data_type": "boolean",
+                    "example_values": [
+                        true,
+                        false
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.source",
-                    "data_type": "string"
+                    "data_type": "boolean",
+                    "example_values": [
+                        true,
+                        false
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.active",
-                    "data_type": "string"
+                    "data_type": "boolean",
+                    "example_values": [
+                        true,
+                        false
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.type.name",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "column_name": "Watchlist Type",
+                    "column_order": 1
                 },
                 {
-                    "data_path": "action_result.status",
-                    "data_type": "string",
+                    "data_path": "action_result.data.*.type.id",
+                    "data_type": "numeric",
                     "example_values": [
-                        "success",
-                        "failed"
+                        0
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.hidden",
+                    "data_type": "boolean",
+                    "example_values": [
+                        true,
+                        false
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.customType.id",
+                    "data_type": "numeric",
+                    "example_values": [
+                        0
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.total_watchlists",
+                    "data_type": "numeric",
+                    "example_values": [
+                        5
                     ]
                 },
                 {
                     "data_path": "action_result.message",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.summary.total_fields",
-                    "data_type": "numeric"
+                    "data_type": "string",
+                    "example_values": [
+                        "Total watchlists: 5"
+                    ]
                 },
                 {
                     "data_path": "summary.total_objects",
@@ -371,12 +422,12 @@
                     "column_order": 4
                 },
                 {
-                    "data_path": "action_result.message",
-                    "data_type": "string"
-                },
-                {
                     "data_path": "action_result.summary.total_values",
                     "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
                 },
                 {
                     "data_path": "summary.total_objects",
@@ -421,31 +472,6 @@
             },
             "output": [
                 {
-                    "data_path": "action_result.parameter.watchlist_id",
-                    "data_type": "string",
-                    "contains": [
-                        "esm watchlist id"
-                    ]
-                },
-                {
-                    "data_path": "action_result.summary.name",
-                    "data_type": "string",
-                    "column_name": "Watchlist Name",
-                    "column_order": 0
-                },
-                {
-                    "data_path": "action_result.summary.type",
-                    "data_type": "string",
-                    "column_name": "Watchlist Type",
-                    "column_order": 1
-                },
-                {
-                    "data_path": "action_result.data.*.values",
-                    "data_type": "string",
-                    "column_name": "Watchlist Values",
-                    "column_order": 2
-                },
-                {
                     "data_path": "action_result.status",
                     "data_type": "string",
                     "example_values": [
@@ -454,12 +480,55 @@
                     ]
                 },
                 {
-                    "data_path": "action_result.message",
-                    "data_type": "string"
+                    "data_path": "action_result.parameter.watchlist_id",
+                    "data_type": "numeric",
+                    "contains": [
+                        "esm watchlist id"
+                    ],
+                    "example_values": [
+                        1
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.values",
+                    "data_type": "string",
+                    "column_name": "Watchlist Values",
+                    "column_order": 2,
+                    "example_values": [
+                        "10.0.0.0"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.name",
+                    "data_type": "string",
+                    "column_name": "Watchlist Name",
+                    "column_order": 0,
+                    "example_values": [
+                        "phantom test"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.type",
+                    "data_type": "string",
+                    "column_name": "Watchlist Type",
+                    "column_order": 1,
+                    "example_values": [
+                        "IPAddress"
+                    ]
                 },
                 {
                     "data_path": "action_result.summary.total_values",
-                    "data_type": "numeric"
+                    "data_type": "numeric",
+                    "example_values": [
+                        5
+                    ]
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string",
+                    "example_values": [
+                        "Name: phantom test, Type: IPAddress, Total values: 5"
+                    ]
                 },
                 {
                     "data_path": "summary.total_objects",
@@ -510,35 +579,6 @@
             },
             "output": [
                 {
-                    "data_path": "action_result.parameter.values_to_add",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.parameter.watchlist_id",
-                    "data_type": "string",
-                    "contains": [
-                        "esm watchlist id"
-                    ]
-                },
-                {
-                    "data_path": "action_result.summary.name",
-                    "data_type": "string",
-                    "column_name": "Watchlist Name",
-                    "column_order": 0
-                },
-                {
-                    "data_path": "action_result.summary.type",
-                    "data_type": "string",
-                    "column_name": "Watchlist Type",
-                    "column_order": 1
-                },
-                {
-                    "data_path": "action_result.data.*.values",
-                    "data_type": "string",
-                    "column_name": "Watchlist Values",
-                    "column_order": 2
-                },
-                {
                     "data_path": "action_result.status",
                     "data_type": "string",
                     "example_values": [
@@ -547,12 +587,62 @@
                     ]
                 },
                 {
-                    "data_path": "action_result.message",
-                    "data_type": "string"
+                    "data_path": "action_result.parameter.values_to_add",
+                    "data_type": "string",
+                    "example_values": [
+                        "10.0.0.1"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.watchlist_id",
+                    "data_type": "numeric",
+                    "contains": [
+                        "esm watchlist id"
+                    ],
+                    "example_values": [
+                        1
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.values",
+                    "data_type": "string",
+                    "column_name": "Watchlist Values",
+                    "column_order": 2,
+                    "example_values": [
+                        "10.0.0.0"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.name",
+                    "data_type": "string",
+                    "column_name": "Watchlist Name",
+                    "column_order": 0,
+                    "example_values": [
+                        "phantom test"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.type",
+                    "data_type": "string",
+                    "column_name": "Watchlist Type",
+                    "column_order": 1,
+                    "example_values": [
+                        "IPAddress"
+                    ]
                 },
                 {
                     "data_path": "action_result.summary.total_values",
-                    "data_type": "numeric"
+                    "data_type": "numeric",
+                    "example_values": [
+                        5
+                    ]
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string",
+                    "example_values": [
+                        "Updated watchlist successfully "
+                    ]
                 },
                 {
                     "data_path": "summary.total_objects",

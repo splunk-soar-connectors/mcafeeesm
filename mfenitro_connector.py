@@ -412,14 +412,14 @@ class MFENitroConnector(BaseConnector):
         ret_val, resp_data = self._make_rest_call(action_result, endpoint)
 
         if phantom.is_fail(ret_val):
-            return action_result.get_status(), None
+            return action_result.get_status()
 
         for watchlist in resp_data:
             if self._version == '10' or self._version == '11':
                 watchlist['id'] = {'value': watchlist['id']}
             action_result.add_data(watchlist)
 
-        action_result.set_summary({'total_fields': len(resp_data)})
+        action_result.set_summary({'total_watchlists': len(resp_data)})
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
@@ -456,7 +456,7 @@ class MFENitroConnector(BaseConnector):
 
         try:
             action_result.set_summary({'name': details_return_value["name"]})
-            action_result.update_summary({'type': details_return_value["customType"]["name"]})
+            action_result.update_summary({'type': details_return_value["type"]["name"]})
         except:
             return action_result.set_status(phantom.APP_ERROR, "Could not update summary when getting watchlist id: {0}".format(watchlist_id))
 
@@ -467,19 +467,41 @@ class MFENitroConnector(BaseConnector):
         except:
             return action_result.set_status(phantom.APP_ERROR, "Could not get the file id from the details for watchlist id: {0}".format(watchlist_id))
 
-        # The hardcoded value for 50,000 bytes read below may need to be a parameter in the action for customization
-        ret_val, values_return_value = self._make_rest_call(action_result, 'sysGetWatchlistValues?pos=0&count=50000', data=values_body)
+        # If fileSize is more than count then make_rest_call to get remaining data
+        bytesRead = 0
+        pos = 0
+        fileSize = 50000
+        count = 50000
+        totalValue = 0
+        while (bytesRead <= fileSize):
 
-        if phantom.is_fail(ret_val):
-            return action_result.get_status(), None
+            ret_val, values_return_value = self._make_rest_call(action_result, 'sysGetWatchlistValues?pos={0}&count={1}'.format(pos, count), data=values_body)
 
-        if values_return_value:
-            value_list = values_return_value["data"].splitlines()
-            value_dict_list = []
-            for x in range(len(value_list)):
-                value_dict_list.append({"values": value_list[x]})
-            [action_result.add_data(x) for x in value_dict_list]
-            action_result.update_summary({'total_values': len(value_dict_list)})
+            if phantom.is_fail(ret_val):
+                return action_result.get_status()
+
+            fileSize = values_return_value["fileSize"]
+            bytesRead += count
+
+            if values_return_value:
+                value_list = values_return_value["data"].splitlines()
+                value_dict_list = []
+                if values_return_value["data"][-1:] != "\n":
+                    for x in range(len(value_list) - 1):
+                        value_dict_list.append({"values": value_list[x]})
+                    pos += (values_return_value["data"].rfind('\n')) + 1
+                else:
+                    for x in range(len(value_list)):
+                        value_dict_list.append({"values": value_list[x]})
+                    pos += count
+                [action_result.add_data(x) for x in value_dict_list]
+                totalValue += len(value_dict_list)
+
+            if (bytesRead > fileSize):
+                break
+
+        action_result.update_summary({'total_values': totalValue})
+        action_result.get_status()
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
@@ -511,7 +533,7 @@ class MFENitroConnector(BaseConnector):
                 values_to_add = [x.strip(" '") for x in param["values_to_add"].split(',')]
             except Exception as e:
                 err = self._get_error_message_from_exception(e)
-                return action_result.set_status(phantom.APP_ERROR, "Unable to parse the 'values to add' list string Error: {0}".format(str(err)))
+                return action_result.set_status(phantom.APP_ERROR, "Unable to parse the 'values to add' list string Error: {0}".format(err))
 
         w_value = param["watchlist_id"]
         if self._version == '9':
@@ -524,7 +546,11 @@ class MFENitroConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, "Could not update watchlist for id: {0}".format(param["watchlist_id"]))
 
         self.debug_print("Completed update, moving to get watchlist")
-        return self._get_watchlist_details(action_result, param["watchlist_id"])
+        ret_val = self._get_watchlist_details(action_result, param["watchlist_id"])
+        if phantom.is_fail(ret_val):
+            return action_result.get_status()
+
+        return action_result.set_status(phantom.APP_SUCCESS, "Updated watchlist successfully")
 
     def _get_events(self, param):
 
