@@ -1,5 +1,5 @@
 # File: mfenitro_connector.py
-# Copyright (c) 2016-2020 Splunk Inc.
+# Copyright (c) 2016-2021 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -68,17 +68,13 @@ class MFENitroConnector(BaseConnector):
         self._state = self.load_state()
 
         self._ingest_type = config.get('ingest_data', 'Events')
-        self._version = config.get('version', '9')
+        self._version = config.get('version', '11')
         self._verify = config['verify_server_cert']
         self._base_url = NITRO_BASE_URL.format(config["base_url"].strip('/'))
 
-        if self._version == '9':
-            self._username = config['username']
-            self._password = config['password']
-        else:
-            self._base_url += 'v2/'
-            self._username = base64.b64encode(config['username'].encode())
-            self._password = base64.b64encode(config['password'].encode())
+        self._base_url += 'v2/'
+        self._username = base64.b64encode(config['username'].encode())
+        self._password = base64.b64encode(config['password'].encode())
 
         return phantom.APP_SUCCESS
 
@@ -119,6 +115,21 @@ class MFENitroConnector(BaseConnector):
 
         return error_text
 
+    def _validate_integer(self, action_result, parameter, key):
+        if parameter is not None:
+            try:
+                if not float(parameter).is_integer():
+                    return action_result.set_status(phantom.APP_ERROR, "Please provide a valid integer value in the {}".format(key)), None
+
+                parameter = int(parameter)
+            except:
+                return action_result.set_status(phantom.APP_ERROR, "Please provide a valid integer value in the {}".format(key)), None
+
+            if parameter < 0:
+                return action_result.set_status(phantom.APP_ERROR, "Please provide a valid non-negative integer value in the {}".format(key)), None
+
+        return phantom.APP_SUCCESS, parameter
+
     def _create_session(self, action_result):
 
         self.save_progress("Creating Session for ESM version {0}".format(self._version))
@@ -129,11 +140,8 @@ class MFENitroConnector(BaseConnector):
 
         # login using the credentials
         try:
-            if self._version == '9':
-                login_response = self._session.post(login_url, auth=(self._username, self._password), verify=self._verify)
-            elif self._version == '10' or self._version == '11':
-                body = {'username': self._username, 'password': self._password, 'locale': 'en_US'}
-                login_response = self._session.post(login_url, json=body, verify=self._verify)
+            body = {'username': self._username, 'password': self._password, 'locale': 'en_US'}
+            login_response = self._session.post(login_url, json=body, verify=self._verify)
         except Exception as e:
             err = self._get_error_message_from_exception(e)
             return action_result.set_status(phantom.APP_ERROR, "Error creating session", err)
@@ -141,10 +149,9 @@ class MFENitroConnector(BaseConnector):
         if not 200 <= login_response.status_code < 300:
             return self._handle_error_response(login_response, action_result)
 
-        if self._version == '10' or self._version == '11':
-            if 'Xsrf-Token' not in login_response.headers:
-                return action_result.set_status(phantom.APP_ERROR, "Error creating session: Xsrf-Token not found in login response.")
-            self._headers = {'X-Xsrf-Token': login_response.headers['Xsrf-Token']}
+        if 'Xsrf-Token' not in login_response.headers:
+            return action_result.set_status(phantom.APP_ERROR, "Error creating session: Xsrf-Token not found in login response.")
+        self._headers = {'X-Xsrf-Token': login_response.headers['Xsrf-Token']}
 
         return phantom.APP_SUCCESS
 
@@ -169,16 +176,12 @@ class MFENitroConnector(BaseConnector):
         if not request_func:
             return action_result.set_status(phantom.APP_ERROR, "API Unsupported method: {0}".format(method)), None
 
-        headers = None
-        if self._version == '10' or self._version == '11':
-            headers = self._headers
-
         try:
             result = request_func(
                     self._base_url + endpoint,
                     json=data,
                     params=params,
-                    headers=headers,
+                    headers=self._headers,
                     verify=self._verify)
         except Exception as e:
             err = self._get_error_message_from_exception(e)
@@ -199,9 +202,6 @@ class MFENitroConnector(BaseConnector):
             if endpoint == 'sysAddWatchlistValues':
                 return phantom.APP_SUCCESS, None
             return action_result.set_status(phantom.APP_ERROR, "Error converting response to json. {0}".format(err)), None
-
-        if self._version == '9' and 'return' in resp_json:
-            resp_json = resp_json['return']
 
         return phantom.APP_SUCCESS, resp_json
 
@@ -269,6 +269,9 @@ class MFENitroConnector(BaseConnector):
 
         # Get the poll time in minutes
         poll_time = config.get(NITRO_JSON_POLL_TIME, NITRO_POLL_TIME_DEFAULT)
+        ret_val, poll_time = self._validate_integer(self, poll_time, POLL_TIME_KEY)
+        if phantom.is_fail(ret_val):
+            return self.get_status()
 
         # get the device timezone
         device_tz_sting = config[NITRO_JSON_TIMEZONE]
@@ -304,56 +307,44 @@ class MFENitroConnector(BaseConnector):
         config = self.get_config()
 
         # validate the query timeout
-        query_timeout = config.get(NITRO_JSON_QUERY_TIMEOUT, int(NITRO_DEFAULT_TIMEOUT_SECS))
+        query_timeout = config.get(NITRO_JSON_QUERY_TIMEOUT, NITRO_DEFAULT_TIMEOUT_SECS)
+        ret_val, query_timeout = self._validate_integer(self, query_timeout, QUERY_TIMEOUT_KEY)
+        if phantom.is_fail(ret_val):
+            return self.get_status()
 
-        try:
-            query_timeout = int(query_timeout)
-        except Exception as e:
-            err = self._get_error_message_from_exception(e)
-            return action_result.set_status(phantom.APP_ERROR, "Invalid query timeout value", err)
-
-        if query_timeout < int(NITRO_DEFAULT_TIMEOUT_SECS):
+        if query_timeout < NITRO_DEFAULT_TIMEOUT_SECS:
             return action_result.set_status(phantom.APP_ERROR, "Please specify a query timeout value greater or equal to {0}".format(NITRO_DEFAULT_TIMEOUT_SECS))
 
         config[NITRO_JSON_QUERY_TIMEOUT] = query_timeout
 
-        poll_time = config.get(NITRO_JSON_POLL_TIME, int(NITRO_POLL_TIME_DEFAULT))
+        poll_time = config.get(NITRO_JSON_POLL_TIME, NITRO_POLL_TIME_DEFAULT)
+        ret_val, poll_time = self._validate_integer(self, poll_time, POLL_TIME_KEY)
+        if phantom.is_fail(ret_val):
+            return self.get_status()
 
-        try:
-            poll_time = int(poll_time)
-        except Exception as e:
-            err = self._get_error_message_from_exception(e)
-            return action_result.set_status(phantom.APP_ERROR, "Invalid Poll Time value", err)
-
-        if poll_time < int(NITRO_POLL_TIME_DEFAULT):
+        if poll_time < NITRO_POLL_TIME_DEFAULT:
             return action_result.set_status(phantom.APP_ERROR, "Please specify the poll time interval value greater than {0}".format(NITRO_POLL_TIME_DEFAULT))
 
         config[NITRO_JSON_POLL_TIME] = poll_time
 
-        max_containers = config.get(NITRO_JSON_MAX_CONTAINERS, int(NITRO_DEFAULT_MAX_CONTAINERS))
+        max_containers = config.get(NITRO_JSON_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS)
+        ret_val, max_containers = self._validate_integer(self, max_containers, MAX_CONTAINERS_KEY)
+        if phantom.is_fail(ret_val):
+            return self.get_status()
 
-        try:
-            max_containers = int(max_containers)
-        except Exception as e:
-            err = self._get_error_message_from_exception(e)
-            return action_result.set_status(phantom.APP_ERROR, "Invalid {0} value".format(NITRO_JSON_MAX_CONTAINERS), err)
-
-        if max_containers < int(NITRO_DEFAULT_MAX_CONTAINERS):
+        if max_containers < NITRO_DEFAULT_MAX_CONTAINERS:
             return action_result.set_status(phantom.APP_ERROR,
                     "Please specify the {0} value greater than {1}. Ideally this value should be greater than the max events generated within a second on the device.".format(
                         NITRO_JSON_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
 
         config[NITRO_JSON_MAX_CONTAINERS] = max_containers
 
-        first_max_containers = config.get(NITRO_JSON_FIRST_MAX_CONTAINERS, int(NITRO_DEFAULT_MAX_CONTAINERS))
+        first_max_containers = config.get(NITRO_JSON_FIRST_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS)
+        ret_val, first_max_containers = self._validate_integer(self, first_max_containers, FIRST_MAX_CONTAINERS_KEY)
+        if phantom.is_fail(ret_val):
+            return self.get_status()
 
-        try:
-            first_max_containers = int(first_max_containers)
-        except Exception as e:
-            err = self._get_error_message_from_exception(e)
-            return action_result.set_status(phantom.APP_ERROR, "Invalid {0} value".format(NITRO_JSON_FIRST_MAX_CONTAINERS), err)
-
-        if first_max_containers < int(NITRO_DEFAULT_MAX_CONTAINERS):
+        if first_max_containers < NITRO_DEFAULT_MAX_CONTAINERS:
             return action_result.set_status(phantom.APP_ERROR,
                     "Please specify the {0} value greater than {1}. Ideally this value should be greater than the max events generated within a second on the device.".format(
                         NITRO_JSON_FIRST_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
@@ -405,18 +396,13 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Failed to create the session. Cannot continue")
             return self.get_status()
 
-        endpoint = 'sysGetWatchlists'
-        if self._version == '10' or self._version == '11':
-            endpoint += '?hidden=true&dynamic=true&writeOnly=true&indexedOnly=true'
-
-        ret_val, resp_data = self._make_rest_call(action_result, endpoint)
+        ret_val, resp_data = self._make_rest_call(action_result, GET_WATCHLISTS_URL)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         for watchlist in resp_data:
-            if self._version == '10' or self._version == '11':
-                watchlist['id'] = {'value': watchlist['id']}
+            watchlist['id'] = {'value': watchlist['id']}
             action_result.add_data(watchlist)
 
         action_result.set_summary({'total_watchlists': len(resp_data)})
@@ -441,12 +427,14 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Failed to create the session. Cannot continue")
             return self.get_status()
 
-        return self._get_watchlist_details(action_result, param["watchlist_id"])
+        watchlist_id = param["watchlist_id"]
+        ret_val, watchlist_id = self._validate_integer(action_result, watchlist_id, WATCHLIST_ID_KEY)
+        if phantom.is_fail(ret_val):
+            return action_result.get_status()
+
+        return self._get_watchlist_details(action_result, watchlist_id)
 
     def _get_watchlist_details(self, action_result, watchlist_id):
-
-        if self._version == '9':
-            watchlist_id = {"value": watchlist_id}
 
         details_body = {"id": watchlist_id}
         ret_val, details_return_value = self._make_rest_call(action_result, 'sysGetWatchlistDetails', data=details_body)
@@ -467,37 +455,35 @@ class MFENitroConnector(BaseConnector):
         except:
             return action_result.set_status(phantom.APP_ERROR, "Could not get the file id from the details for watchlist id: {0}".format(watchlist_id))
 
-        # If fileSize is more than count then make_rest_call to get remaining data
-        bytesRead = 0
+        # If fileSize is less than pos then make_rest_call to get remaining data
         pos = 0
-        fileSize = 50000
-        count = 50000
+        fileSize = 0
         totalValue = 0
-        while (bytesRead <= fileSize):
+        while (pos <= fileSize):
 
-            ret_val, values_return_value = self._make_rest_call(action_result, 'sysGetWatchlistValues?pos={0}&count={1}'.format(pos, count), data=values_body)
+            ret_val, values_return_value = self._make_rest_call(action_result, 'sysGetWatchlistValues?pos={0}&count={1}'.format(pos, NITRO_QUERY_COUNT), data=values_body)
 
             if phantom.is_fail(ret_val):
                 return action_result.get_status()
 
             fileSize = values_return_value["fileSize"]
-            bytesRead += count
 
             if values_return_value:
                 value_list = values_return_value["data"].splitlines()
                 value_dict_list = []
-                if values_return_value["data"][-1:] != "\n":
+                if (values_return_value["data"][-1:] != "\n") and (len(value_list) != 1):
                     for x in range(len(value_list) - 1):
                         value_dict_list.append({"values": value_list[x]})
                     pos += (values_return_value["data"].rfind('\n')) + 1
                 else:
                     for x in range(len(value_list)):
                         value_dict_list.append({"values": value_list[x]})
-                    pos += count
-                [action_result.add_data(x) for x in value_dict_list]
-                totalValue += len(value_dict_list)
+                    pos += NITRO_QUERY_COUNT
 
-            if (bytesRead > fileSize):
+            totalValue += len(value_dict_list)
+            [action_result.add_data(x) for x in value_dict_list]
+
+            if (pos > fileSize):
                 break
 
         action_result.update_summary({'total_values': totalValue})
@@ -536,17 +522,18 @@ class MFENitroConnector(BaseConnector):
                 return action_result.set_status(phantom.APP_ERROR, "Unable to parse the 'values to add' list string Error: {0}".format(err))
 
         w_value = param["watchlist_id"]
-        if self._version == '9':
-            w_value = {'value': w_value}
+        ret_val, w_value = self._validate_integer(action_result, w_value, WATCHLIST_ID_KEY)
+        if phantom.is_fail(ret_val):
+            return action_result.get_status()
 
         body = {"watchlist": w_value, "values": values_to_add}
         ret_val, resp_data = self._make_rest_call(action_result, 'sysAddWatchlistValues', data=body)
 
         if phantom.is_fail(ret_val):
-            return action_result.set_status(phantom.APP_ERROR, "Could not update watchlist for id: {0}".format(param["watchlist_id"]))
+            return action_result.set_status(phantom.APP_ERROR, "Could not update watchlist for id: {0}".format(w_value))
 
         self.debug_print("Completed update, moving to get watchlist")
-        ret_val = self._get_watchlist_details(action_result, param["watchlist_id"])
+        ret_val = self._get_watchlist_details(action_result, w_value)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
@@ -580,9 +567,6 @@ class MFENitroConnector(BaseConnector):
             field_list.append({"name": field})
 
         event_id = param['event_id']
-        if self._version == '9':
-            event_id = {"value": event_id}
-
         data = {"eventId": event_id, "fields": field_list}
 
         ret_val, resp_data = self._make_rest_call(action_result, GET_EVENTS_URL, data=data)
@@ -644,25 +628,6 @@ class MFENitroConnector(BaseConnector):
         filters = config.get(NITRO_JSON_FILTERS)
 
         if not filters:
-
-            # ESM v10 requires at least one filter, so we add a filter here
-            if self._version == '10':
-                filters = [
-                        {
-                            "type": "EsmFieldFilter",
-                            "field": "ID",
-                            "operator": "NOT_IN",
-                            "values": [
-                                {
-                                    "type": "EsmBasicValue",
-                                    "value": "0"
-                                }
-                            ]
-                        }
-                    ]
-
-                return phantom.APP_SUCCESS, filters
-
             return phantom.APP_SUCCESS, None
 
         # try to load the filters as a json
@@ -737,13 +702,10 @@ class MFENitroConnector(BaseConnector):
             req_block['config']['fields'].extend(field_list)
             req_block['config']['fields'].extend(request_fields.common_fields)
 
-            if self._version != '11':
-                req_block['config']['fields'].extend(request_fields.event_fields_list_if_not_version_11)
-
             if (filter_dict):
                 req_block['config']['filters'] = filter_dict
 
-            if self._version == '11':
+            else:
                 req_block['config']['filters'] = [
                     {
                         "type": "EsmFieldFilter",
@@ -784,8 +746,6 @@ class MFENitroConnector(BaseConnector):
         # the result id is mentioned in the response of the query
         # the result id and session header are the keys for the result retrieval
         result_id = ack_data.get("resultID", {})
-        if self._version == '9':
-            result_id = result_id.get("value")
 
         if not result_id:
             return action_result.set_status(phantom.APP_ERROR, "Response did not contain required key resultID or value"), None
@@ -799,8 +759,6 @@ class MFENitroConnector(BaseConnector):
         if not query_finished:
             return action_result.set_status(phantom.APP_ERROR, message), None
 
-        if self._version == '9':
-            result_id = {"value": result_id}
         result_req_json = {"resultID": result_id}
 
         # Ignoring the results of the status as a failed query will be handled with no result
@@ -812,9 +770,6 @@ class MFENitroConnector(BaseConnector):
         return phantom.APP_SUCCESS, ret_data
 
     def _check_query_status(self, action_result, result_id, query_timeout):
-
-        if self._version == '9':
-            result_id = {"value": result_id}
 
         result_req_json = {"resultID": result_id}
 
@@ -994,8 +949,7 @@ class MFENitroConnector(BaseConnector):
             artifact['name'] = "Alarm Artifact"
             artifact['source_data_identifier'] = alarm['id']
             artifact['cef'] = alarm
-            artifact['cef_types'] = {'id': ['esm alarm id']}
-
+            artifact['cef_types'] = {'id1': ['esm alarm id']}
             containers.append(container)
 
         self.save_containers(containers)

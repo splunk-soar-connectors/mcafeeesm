@@ -33,22 +33,6 @@ alarm_fields_list = [
     {u'name': u'AlarmTriggerDate'}
 ]
 
-# These were originally in event_fields_list, but throw errors for version 11 ESM
-event_fields_list_if_not_version_11 = [
-    {u'name': u'NDDevIDDst'},
-    {u'name': u'NDDevIDSrc'},
-    {u'name': u'NDDevIFDst'},
-    {u'name': u'NDDevIFSrc'},
-    {u'name': u'NDDeviceInterface_NDDevIFDst.Name'},
-    {u'name': u'NDDevice_NDDevIDDst.ManagementIP'},
-    {u'name': u'NDDevice_NDDevIDDst.SystemName'},
-    {u'name': u'NDDeviceInterface_NDDevIFSrc.Name'},
-    {u'name': u'NDDevice_NDDevIDSrc.ManagementIP'},
-    {u'name': u'NDDevice_NDDevIDSrc.SystemName'},
-    {u'name': u'NDIFIDDst'},
-    {u'name': u'NDIFIDSrc'}
-]
-
 event_fields_list = [
     {u'name': u'Access_Mask'},
     {u'name': u'Access_Privileges'},

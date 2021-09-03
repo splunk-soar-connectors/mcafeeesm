@@ -48,11 +48,9 @@
             "description": "Version",
             "order": 4,
             "value_list": [
-                "9",
-                "10",
                 "11"
             ],
-            "default": "9"
+            "default": "11"
         },
         "ingest_data": {
             "data_type": "string",
@@ -73,15 +71,13 @@
             "data_type": "numeric",
             "description": "Maximum objects for scheduled polling",
             "order": 7,
-            "default": 100,
-            "required": true
+            "default": 100
         },
         "first_run_max_events": {
             "data_type": "numeric",
             "order": 8,
             "description": "Maximum objects to poll first time",
-            "default": 2000,
-            "required": true
+            "default": 2000
         },
         "poll_time": {
             "data_type": "numeric",
@@ -556,7 +552,7 @@
         {
             "action": "update watchlist",
             "description": "Add an entry to a specific watchlist as configured in the ESM",
-            "type": "correct",
+            "type": "generic",
             "identifier": "update_watchlist",
             "read_only": false,
             "parameters": {
