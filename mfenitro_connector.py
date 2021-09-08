@@ -599,13 +599,18 @@ class MFENitroConnector(BaseConnector):
         config = self.get_config()
         limit = config["max_containers"]
         query_params = dict()
-        last_time = self._state.get(NITRO_JSON_LAST_DATE_TIME)
+        if self._ingest_type == 'Alarms':
+            last_time = self._state.get(NITRO_JSON_LAST_DATE_TIME_ALARMS)
+            first_run = 'first_run_alarms'
+        else:
+            last_time = self._state.get(NITRO_JSON_LAST_DATE_TIME_EVENTS)
+            first_run = 'first_run_events'
 
         if self.is_poll_now():
             limit = param.get("container_count", 100)
             query_params["customStart"] = self._get_first_start_time()
-        elif self._state.get('first_run', True):
-            self._state['first_run'] = False
+        elif self._state.get(first_run, True):
+            self._state[first_run] = False
             limit = config.get("first_run_max_events", 100)
             query_params["customStart"] = self._get_first_start_time()
         elif last_time:
@@ -617,7 +622,10 @@ class MFENitroConnector(BaseConnector):
         query_params["customEnd"] = self._get_end_time()
 
         if not self.is_poll_now():
-            self._state[NITRO_JSON_LAST_DATE_TIME] = query_params["customEnd"]
+            if self._ingest_type == 'Alarms':
+                self._state[NITRO_JSON_LAST_DATE_TIME_ALARMS] = query_params["customEnd"]
+            else:
+                self._state[NITRO_JSON_LAST_DATE_TIME_EVENTS] = query_params["customEnd"]
 
         return query_params
 
@@ -817,7 +825,7 @@ class MFENitroConnector(BaseConnector):
 
             # convert what we got into ZULU, This is a bit whack, Nitro requires the string to contain T and Z
             # but the time between these 2 chars has to be in the timezone configured on the device
-            self._state[NITRO_JSON_LAST_DATE_TIME] = datetime.strptime(last_date_time, NITRO_RESP_DATETIME_FORMAT).strftime(DATETIME_FORMAT)
+            self._state[NITRO_JSON_LAST_DATE_TIME_EVENTS] = datetime.strptime(last_date_time, NITRO_RESP_DATETIME_FORMAT).strftime(DATETIME_FORMAT)
 
             date_strings = [x["Alert.FirstTime"] for x in events]
 
@@ -827,7 +835,7 @@ class MFENitroConnector(BaseConnector):
                 self.debug_print("Getting all containers with the same date, down to the second." +  # noqa
                         " That means the device is generating max_containers=({0}) per second.".format(config[NITRO_JSON_MAX_CONTAINERS]) +  # noqa
                         " Skipping to the next second to not get stuck.")
-                self._state[NITRO_JSON_LAST_DATE_TIME] = self._get_next_start_time(self._state[NITRO_JSON_LAST_DATE_TIME])
+                self._state[NITRO_JSON_LAST_DATE_TIME_EVENTS] = self._get_next_start_time(self._state[NITRO_JSON_LAST_DATE_TIME_EVENTS])
 
         return phantom.APP_SUCCESS
 
@@ -925,10 +933,9 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Got more alarms than limit. Trimming number of alarms from {0} to {1}".format(len(resp_data), limit))
             resp_data = resp_data[:limit]
             if not self.is_poll_now():
-                self._state[NITRO_JSON_LAST_DATE_TIME] = (datetime.strptime(resp_data[-1]['triggeredDate'], NITRO_RESP_DATETIME_FORMAT) +  # noqa
+                self._state[NITRO_JSON_LAST_DATE_TIME_ALARMS] = (datetime.strptime(resp_data[-1]['triggeredDate'], NITRO_RESP_DATETIME_FORMAT) +  # noqa
                         timedelta(seconds=1)).strftime(DATETIME_FORMAT)
 
-        containers = []
         for alarm in resp_data:
 
             container = {}
@@ -937,7 +944,18 @@ class MFENitroConnector(BaseConnector):
             container['name'] = '{0} at {1}'.format(alarm['alarmName'], alarm['triggeredDate'])
             container['source_data_identifier'] = alarm['id']
             container['data'] = {'raw_alarm': alarm}
-            container['artifacts'] = [artifact]
+            ret_val, message, container_id = self.save_container(container)
+            self.debug_print(CREATE_CONTAINER_RESPONSE.format(ret_val, message, container_id))
+
+            if phantom.is_fail(ret_val):
+                message = "Failed to add Container error msg: {0}".format(message)
+                self.debug_print(message)
+                return phantom.APP_ERROR, "Failed Creating container"
+
+            if not container_id:
+                message = "save_container did not return a container_id"
+                self.debug_print(message)
+                return phantom.APP_ERROR, "Failed creating container"
 
             if alarm['severity'] <= 25:
                 container['severity'] = 'low'
@@ -946,13 +964,15 @@ class MFENitroConnector(BaseConnector):
                 container['severity'] = 'high'
 
             artifact.update(_artifact_common)
+            artifact['container_id'] = container_id
             artifact['name'] = "Alarm Artifact"
             artifact['source_data_identifier'] = alarm['id']
             artifact['cef'] = alarm
             artifact['cef_types'] = {'id1': ['esm alarm id']}
-            containers.append(container)
+            ret_val, status_string, artifact_id = self.save_artifact(artifact)
 
-        self.save_containers(containers)
+            if phantom.is_fail(ret_val):
+                return phantom.APP_ERROR, "Failed to add artifact"
 
         return action_result.set_status(phantom.APP_SUCCESS)
 

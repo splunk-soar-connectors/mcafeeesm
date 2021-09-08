@@ -7,7 +7,8 @@
 
 # NITRO_JSON_POLL_HOURS = "poll_hours"
 NITRO_JSON_POLL_TIME = "poll_time"
-NITRO_JSON_LAST_DATE_TIME = "last_date_time"
+NITRO_JSON_LAST_DATE_TIME_EVENTS = "last_date_time_events"
+NITRO_JSON_LAST_DATE_TIME_ALARMS = "last_date_time_alarms"
 NITRO_JSON_TIMEZONE = "timezone"
 NITRO_JSON_MAX_CONTAINERS = "max_containers"
 NITRO_JSON_FIRST_MAX_CONTAINERS = "first_run_max_events"
