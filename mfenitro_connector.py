@@ -474,7 +474,7 @@ class MFENitroConnector(BaseConnector):
                 if (values_return_value["data"][-1:] != "\n") and (len(value_list) != 1):
                     for x in range(len(value_list) - 1):
                         value_dict_list.append({"values": value_list[x]})
-                    pos += (values_return_value["data"].rfind('\n')) + 1
+                    pos += NITRO_QUERY_COUNT - len(value_list[-1].encode('utf-8')) + 1
                 else:
                     for x in range(len(value_list)):
                         value_dict_list.append({"values": value_list[x]})
