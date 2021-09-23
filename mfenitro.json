@@ -76,7 +76,6 @@
         "ingest_manner": {
             "data_type": "string",
             "description": "How to ingest",
-            "required": true,
             "order": 8,
             "value_list": [
                 "oldest first",

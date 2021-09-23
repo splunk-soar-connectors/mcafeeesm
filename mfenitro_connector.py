@@ -1013,6 +1013,7 @@ class MFENitroConnector(BaseConnector):
             if phantom.is_fail(ret_val):
                 return action_result.get_status()
 
+            resp_data = list(reversed(resp_data))
             for alarm in resp_data:
 
                 container = {}
@@ -1052,7 +1053,7 @@ class MFENitroConnector(BaseConnector):
                     return phantom.APP_ERROR, "Failed to add artifact"
 
             if not self.is_poll_now():
-                self._state[NITRO_JSON_LAST_DATE_TIME_ALARMS] = (datetime.strptime(resp_data[0]['triggeredDate'],  # noqa
+                self._state[NITRO_JSON_LAST_DATE_TIME_ALARMS] = (datetime.strptime(resp_data[-1]['triggeredDate'],  # noqa
                     NITRO_RESP_DATETIME_FORMAT)).strftime(DATETIME_FORMAT)
 
         return action_result.set_status(phantom.APP_SUCCESS)
@@ -1162,6 +1163,8 @@ class MFENitroConnector(BaseConnector):
 
         self.send_progress("Event fields acquired successfully. Closing session")
 
+        if self._ingest_manner == "latest first":
+            result_rows = list(reversed(result_rows))
         ret_val = self._handle_result_rows(result_rows)
 
         if phantom.is_fail(ret_val):
