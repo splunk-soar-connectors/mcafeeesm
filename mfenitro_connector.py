@@ -75,6 +75,8 @@ class MFENitroConnector(BaseConnector):
         self._base_url += 'v2/'
         self._username = base64.b64encode(config['username'].encode())
         self._password = base64.b64encode(config['password'].encode())
+        self._ingest_manner = config['ingest_manner']
+        self._dup_data = 0
 
         return phantom.APP_SUCCESS
 
@@ -308,9 +310,9 @@ class MFENitroConnector(BaseConnector):
 
         # validate the query timeout
         query_timeout = config.get(NITRO_JSON_QUERY_TIMEOUT, NITRO_DEFAULT_TIMEOUT_SECS)
-        ret_val, query_timeout = self._validate_integer(self, query_timeout, QUERY_TIMEOUT_KEY)
+        ret_val, query_timeout = self._validate_integer(action_result, query_timeout, QUERY_TIMEOUT_KEY)
         if phantom.is_fail(ret_val):
-            return self.get_status()
+            return action_result.get_status()
 
         if query_timeout < NITRO_DEFAULT_TIMEOUT_SECS:
             return action_result.set_status(phantom.APP_ERROR, "Please specify a query timeout value greater or equal to {0}".format(NITRO_DEFAULT_TIMEOUT_SECS))
@@ -318,9 +320,9 @@ class MFENitroConnector(BaseConnector):
         config[NITRO_JSON_QUERY_TIMEOUT] = query_timeout
 
         poll_time = config.get(NITRO_JSON_POLL_TIME, NITRO_POLL_TIME_DEFAULT)
-        ret_val, poll_time = self._validate_integer(self, poll_time, POLL_TIME_KEY)
+        ret_val, poll_time = self._validate_integer(action_result, poll_time, POLL_TIME_KEY)
         if phantom.is_fail(ret_val):
-            return self.get_status()
+            return action_result.get_status()
 
         if poll_time < NITRO_POLL_TIME_DEFAULT:
             return action_result.set_status(phantom.APP_ERROR, "Please specify the poll time interval value greater than {0}".format(NITRO_POLL_TIME_DEFAULT))
@@ -328,9 +330,9 @@ class MFENitroConnector(BaseConnector):
         config[NITRO_JSON_POLL_TIME] = poll_time
 
         max_containers = config.get(NITRO_JSON_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS)
-        ret_val, max_containers = self._validate_integer(self, max_containers, MAX_CONTAINERS_KEY)
+        ret_val, max_containers = self._validate_integer(action_result, max_containers, MAX_CONTAINERS_KEY)
         if phantom.is_fail(ret_val):
-            return self.get_status()
+            return action_result.get_status()
 
         if max_containers < NITRO_DEFAULT_MAX_CONTAINERS:
             return action_result.set_status(phantom.APP_ERROR,
@@ -340,9 +342,9 @@ class MFENitroConnector(BaseConnector):
         config[NITRO_JSON_MAX_CONTAINERS] = max_containers
 
         first_max_containers = config.get(NITRO_JSON_FIRST_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS)
-        ret_val, first_max_containers = self._validate_integer(self, first_max_containers, FIRST_MAX_CONTAINERS_KEY)
+        ret_val, first_max_containers = self._validate_integer(action_result, first_max_containers, FIRST_MAX_CONTAINERS_KEY)
         if phantom.is_fail(ret_val):
-            return self.get_status()
+            return action_result.get_status()
 
         if first_max_containers < NITRO_DEFAULT_MAX_CONTAINERS:
             return action_result.set_status(phantom.APP_ERROR,
@@ -467,10 +469,10 @@ class MFENitroConnector(BaseConnector):
                 return action_result.get_status()
 
             fileSize = values_return_value["fileSize"]
+            value_dict_list = []
 
-            if values_return_value:
+            if fileSize > 0:
                 value_list = values_return_value["data"].splitlines()
-                value_dict_list = []
                 if (values_return_value["data"][-1:] != "\n") and (len(value_list) != 1):
                     for x in range(len(value_list) - 1):
                         value_dict_list.append({"values": value_list[x]})
@@ -483,7 +485,7 @@ class MFENitroConnector(BaseConnector):
             totalValue += len(value_dict_list)
             [action_result.add_data(x) for x in value_dict_list]
 
-            if (pos > fileSize):
+            if (pos > fileSize) or totalValue == 0:
                 break
 
         action_result.update_summary({'total_values': totalValue})
@@ -732,7 +734,10 @@ class MFENitroConnector(BaseConnector):
         field_blocks = [request_fields.event_fields_list[i:i + block_length] for i in range(0, len(request_fields.event_fields_list), block_length)]
 
         # create request blocks from the base
-        request_blocks = [deepcopy(request_fields.req_part_base) for x in field_blocks]
+        if self._ingest_manner == "oldest first":
+            request_blocks = [deepcopy(request_fields.req_part_base_asc) for x in field_blocks]
+        else:
+            request_blocks = [deepcopy(request_fields.req_part_base_desc) for x in field_blocks]
 
         # request_blocks = [x['config']['fields'] = y for x in request_blocks, y in fields_blocks]
         # Add the query_dict to the blocks
@@ -918,61 +923,137 @@ class MFENitroConnector(BaseConnector):
 
         self.debug_print("Ingest data type is Alarm. Ingesting alarms.")
 
+        params['triggeredTimeRange'] = 'CUSTOM'
         limit = None
         if 'limit' in params:
             limit = params['limit']
             del params['limit']
 
-        params['triggeredTimeRange'] = 'CUSTOM'
+        if self._ingest_manner == 'oldest first':
+            params['pageSize'] = NITRO_ALARMS_MAX_PAGESIZE
+            params['pageNumber'] = 1
+            alarm_list = []
+            total_ingested = 0
+            alarm_list = []
+            start = 0
+            end = limit
+            max_alarms = limit
 
-        ret_val, resp_data = self._make_rest_call(action_result, GET_ALARMS_URL, params=params)
+            while True:
+                ret_val, resp_data = self._make_rest_call(action_result, GET_ALARMS_URL, params=params)
 
-        resp_data = list(reversed(resp_data))
+                if resp_data == []:
+                    break
 
-        if limit and len(resp_data) > limit:
-            self.save_progress("Got more alarms than limit. Trimming number of alarms from {0} to {1}".format(len(resp_data), limit))
-            resp_data = resp_data[:limit]
+                alarm_list.extend(list(resp_data))
+                params['pageNumber'] += 1
+
+            alarm_list = list(reversed(alarm_list))
+            while True:
+                self._dup_data = 0
+                for alarm in alarm_list[start:end]:
+
+                    container = {}
+                    artifact = {}
+
+                    container['name'] = '{0} at {1}'.format(alarm['alarmName'], alarm['triggeredDate'])
+                    container['source_data_identifier'] = alarm['id']
+                    container['data'] = {'raw_alarm': alarm}
+                    ret_val, message, container_id = self.save_container(container)
+                    self.debug_print(CREATE_CONTAINER_RESPONSE.format(ret_val, message, container_id))
+
+                    if phantom.is_fail(ret_val):
+                        message = "Failed to add Container error msg: {0}".format(message)
+                        self.debug_print(message)
+                        return phantom.APP_ERROR, "Failed Creating container"
+
+                    if not container_id:
+                        message = "save_container did not return a container_id"
+                        self.debug_print(message)
+                        return phantom.APP_ERROR, "Failed creating container"
+
+                    if "Duplicate container found" in message:
+                        self._dup_data += 1
+
+                    if alarm['severity'] <= 25:
+                        container['severity'] = 'low'
+
+                    if alarm['severity'] >= 75:
+                        container['severity'] = 'high'
+
+                    artifact.update(_artifact_common)
+                    artifact['container_id'] = container_id
+                    artifact['name'] = "Alarm Artifact"
+                    artifact['source_data_identifier'] = alarm['id']
+                    artifact['cef'] = alarm
+                    artifact['cef_types'] = {'id1': ['esm alarm id']}
+                    ret_val, status_string, artifact_id = self.save_artifact(artifact)
+
+                    if phantom.is_fail(ret_val):
+                        return phantom.APP_ERROR, "Failed to add artifact"
+
+                if self.is_poll_now():
+                    break
+                self._state[NITRO_JSON_LAST_DATE_TIME_ALARMS] = (datetime.strptime(alarm_list[end-1]['triggeredDate'],  # noqa
+                    NITRO_RESP_DATETIME_FORMAT)).strftime(DATETIME_FORMAT)
+
+                total_ingested += max_alarms - self._dup_data
+                if len(alarm_list) < limit or total_ingested == limit:
+                    break
+
+                start += limit
+                end += self._dup_data
+                max_alarms = self._dup_data
+
+        else:
+            params['pageSize'] = limit
+
+            ret_val, resp_data = self._make_rest_call(action_result, GET_ALARMS_URL, params=params)
+
+            if phantom.is_fail(ret_val):
+                return action_result.get_status()
+
+            for alarm in resp_data:
+
+                container = {}
+                artifact = {}
+
+                container['name'] = '{0} at {1}'.format(alarm['alarmName'], alarm['triggeredDate'])
+                container['source_data_identifier'] = alarm['id']
+                container['data'] = {'raw_alarm': alarm}
+                ret_val, message, container_id = self.save_container(container)
+                self.debug_print(CREATE_CONTAINER_RESPONSE.format(ret_val, message, container_id))
+
+                if phantom.is_fail(ret_val):
+                    message = "Failed to add Container error msg: {0}".format(message)
+                    self.debug_print(message)
+                    return phantom.APP_ERROR, "Failed Creating container"
+
+                if not container_id:
+                    message = "save_container did not return a container_id"
+                    self.debug_print(message)
+                    return phantom.APP_ERROR, "Failed creating container"
+
+                if alarm['severity'] <= 25:
+                    container['severity'] = 'low'
+
+                if alarm['severity'] >= 75:
+                    container['severity'] = 'high'
+
+                artifact.update(_artifact_common)
+                artifact['container_id'] = container_id
+                artifact['name'] = "Alarm Artifact"
+                artifact['source_data_identifier'] = alarm['id']
+                artifact['cef'] = alarm
+                artifact['cef_types'] = {'id1': ['esm alarm id']}
+                ret_val, status_string, artifact_id = self.save_artifact(artifact)
+
+                if phantom.is_fail(ret_val):
+                    return phantom.APP_ERROR, "Failed to add artifact"
+
             if not self.is_poll_now():
-                self._state[NITRO_JSON_LAST_DATE_TIME_ALARMS] = (datetime.strptime(resp_data[-1]['triggeredDate'], NITRO_RESP_DATETIME_FORMAT) +  # noqa
-                        timedelta(seconds=1)).strftime(DATETIME_FORMAT)
-
-        for alarm in resp_data:
-
-            container = {}
-            artifact = {}
-
-            container['name'] = '{0} at {1}'.format(alarm['alarmName'], alarm['triggeredDate'])
-            container['source_data_identifier'] = alarm['id']
-            container['data'] = {'raw_alarm': alarm}
-            ret_val, message, container_id = self.save_container(container)
-            self.debug_print(CREATE_CONTAINER_RESPONSE.format(ret_val, message, container_id))
-
-            if phantom.is_fail(ret_val):
-                message = "Failed to add Container error msg: {0}".format(message)
-                self.debug_print(message)
-                return phantom.APP_ERROR, "Failed Creating container"
-
-            if not container_id:
-                message = "save_container did not return a container_id"
-                self.debug_print(message)
-                return phantom.APP_ERROR, "Failed creating container"
-
-            if alarm['severity'] <= 25:
-                container['severity'] = 'low'
-
-            if alarm['severity'] >= 75:
-                container['severity'] = 'high'
-
-            artifact.update(_artifact_common)
-            artifact['container_id'] = container_id
-            artifact['name'] = "Alarm Artifact"
-            artifact['source_data_identifier'] = alarm['id']
-            artifact['cef'] = alarm
-            artifact['cef_types'] = {'id1': ['esm alarm id']}
-            ret_val, status_string, artifact_id = self.save_artifact(artifact)
-
-            if phantom.is_fail(ret_val):
-                return phantom.APP_ERROR, "Failed to add artifact"
+                self._state[NITRO_JSON_LAST_DATE_TIME_ALARMS] = (datetime.strptime(resp_data[0]['triggeredDate'],  # noqa
+                    NITRO_RESP_DATETIME_FORMAT)).strftime(DATETIME_FORMAT)
 
         return action_result.set_status(phantom.APP_SUCCESS)
 

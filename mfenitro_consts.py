@@ -31,12 +31,6 @@ ID_DICT = {'name': 'Alert.ID'}
 FIRST_DICT = {'name': 'Alert.FirstTime'}
 MSG_DICT = {'name': 'Rule.msg'}
 DEFAULT_FIELD_LIST = ["LastTime", "Rule.msg", "DSIDSigID", "SrcIP", "DstIP"]
-cef_field_list = ['startTime', 'destinationUserName', 'destinationAddress', 'destinationMacAddress',
-        'destinationPort', 'receiptTime', 'transportProtocol', 'sourceMacAddress',
-        'sourcePort', 'applicationProtocol', 'deviceExternalId', 'sourceUserName',
-        'sourceAddress', 'fileHash', 'message', 'src', 'sourceUserId', 'filePath',
-        'fileSize', 'fileType', 'fileName', 'bytesIn', 'bytesOut', 'requestCookies',
-        'destinationUserId', 'destinationHostName', 'deviceAddress']
 CREATE_CONTAINER_RESPONSE = "save_container returns, value: {0}, reason: {1}, id: {2}"
 NITRO_DEFAULT_TIMEOUT_SECS = 20
 NITRO_QUERY_TIMEOUT_ERR = "Query not completed in the configured time. Please increase the query_timeout value in the asset config and try again."
@@ -46,6 +40,7 @@ DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 NITRO_RESP_DATETIME_FORMAT = "%m/%d/%Y %H:%M:%S"
 
 NITRO_DEFAULT_MAX_CONTAINERS = 10
+NITRO_ALARMS_MAX_PAGESIZE = 5000
 NITRO_CEF_CONTAINS = {
         'nDDeviceNDDevIDDstManagementIP': ['ip'],
         'nDDeviceNDDevIDSrcManagementIP': ['ip'],

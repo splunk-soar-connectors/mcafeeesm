@@ -5,7 +5,7 @@
 # without a valid written license from Splunk Inc. is PROHIBITED.
 # --
 
-req_part_base = {
+req_part_base_asc = {
    "config": {
        "limit": "",
        "timeRange": "CUSTOM",
@@ -21,6 +21,21 @@ req_part_base = {
    }
 }
 
+req_part_base_desc = {
+   "config": {
+       "limit": "",
+       "timeRange": "CUSTOM",
+       "customStart": "",
+       "customEnd": "",
+       "order": [
+         {
+           "direction": "DESCENDING",
+           "field": {"name": "FirstTime"}
+         }
+       ],
+       "fields": []
+   }
+}
 
 common_fields = [{u'name': u'FirstTime'}]
 

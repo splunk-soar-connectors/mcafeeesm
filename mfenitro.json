@@ -73,27 +73,38 @@
             "order": 7,
             "default": 100
         },
+        "ingest_manner": {
+            "data_type": "string",
+            "description": "How to ingest",
+            "required": true,
+            "order": 8,
+            "value_list": [
+                "oldest first",
+                "latest first"
+            ],
+            "default": "oldest first"
+        },
         "first_run_max_events": {
             "data_type": "numeric",
-            "order": 8,
+            "order": 9,
             "description": "Maximum objects to poll first time",
             "default": 2000
         },
         "poll_time": {
             "data_type": "numeric",
-            "order": 9,
+            "order": 10,
             "description": "Ingest objects in last N minutes (POLL NOW and First Run)",
             "default": 2
         },
         "query_timeout": {
             "data_type": "numeric",
-            "order": 10,
+            "order": 11,
             "description": "Max Time to wait for query to finish (seconds)",
             "default": 20
         },
         "timezone": {
             "data_type": "timezone",
-            "order": 11,
+            "order": 12,
             "description": "Timezone configured on device",
             "required": true
         }
