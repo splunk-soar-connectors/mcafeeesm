@@ -7,12 +7,15 @@
     "type": "siem",
     "main_module": "mfenitro_connector.py",
     "app_version": "3.0.0",
+    "latest_tested_versions": [
+        "McAfee ESM 11.4.1"
+    ],
     "utctime_updated": "2020-01-13T23:40:42.000000Z",
     "package_name": "phantom_mfeesm",
     "product_vendor": "McAfee",
     "product_name": "McAfee ESM",
     "product_version_regex": ".*",
-    "min_phantom_version": "4.9.39220",
+    "min_phantom_version": "4.10.0.40961",
     "python_version": "3",
     "logo": "logo_mcafee_esm.svg",
     "logo_dark": "logo_mcafee_dark_esm.svg",
@@ -69,7 +72,7 @@
         },
         "max_containers": {
             "data_type": "numeric",
-            "description": "Maximum objects for scheduled polling",
+            "description": "Maximum objects for scheduled polling (greater or equal to 10)",
             "order": 7,
             "default": 100
         },
@@ -86,19 +89,19 @@
         "first_run_max_events": {
             "data_type": "numeric",
             "order": 9,
-            "description": "Maximum objects to poll first time",
+            "description": "Maximum objects to poll first time (gretaer or equal to 10)",
             "default": 2000
         },
         "poll_time": {
             "data_type": "numeric",
             "order": 10,
-            "description": "Ingest objects in last N minutes (POLL NOW and First Run)",
+            "description": "Ingest objects in last N minutes (POLL NOW and First Run) (gretaer or equal to 2)",
             "default": 2
         },
         "query_timeout": {
             "data_type": "numeric",
             "order": 11,
-            "description": "Max Time to wait for query to finish (seconds)",
+            "description": "Max Time to wait for query to finish (seconds) (greater or equal to 20)",
             "default": 20
         },
         "timezone": {
@@ -122,7 +125,7 @@
         {
             "action": "list fields",
             "description": "List the fields available to be used in filters",
-            "type": "generic",
+            "type": "investigate",
             "identifier": "list_fields",
             "read_only": true,
             "parameters": {},
@@ -142,7 +145,7 @@
                     "column_order": 0
                 },
                 {
-                    "data_path": "action_result.data.*.types",
+                    "data_path": "action_result.data.*.types.*",
                     "data_type": "string",
                     "column_name": "Types",
                     "column_order": 1
@@ -275,10 +278,9 @@
                 },
                 {
                     "data_path": "action_result.data.*.source",
-                    "data_type": "boolean",
+                    "data_type": "numeric",
                     "example_values": [
-                        true,
-                        false
+                        0
                     ]
                 },
                 {
@@ -510,7 +512,7 @@
                     "column_name": "Watchlist Name",
                     "column_order": 0,
                     "example_values": [
-                        "phantom test"
+                        "test"
                     ]
                 },
                 {
@@ -533,7 +535,7 @@
                     "data_path": "action_result.message",
                     "data_type": "string",
                     "example_values": [
-                        "Name: phantom test, Type: IPAddress, Total values: 5"
+                        "Name: test, Type: IPAddress, Total values: 5"
                     ]
                 },
                 {
@@ -624,7 +626,7 @@
                     "column_name": "Watchlist Name",
                     "column_order": 0,
                     "example_values": [
-                        "phantom test"
+                        "test"
                     ]
                 },
                 {

@@ -34,6 +34,7 @@ DEFAULT_FIELD_LIST = ["LastTime", "Rule.msg", "DSIDSigID", "SrcIP", "DstIP"]
 CREATE_CONTAINER_RESPONSE = "save_container returns, value: {0}, reason: {1}, id: {2}"
 NITRO_DEFAULT_TIMEOUT_SECS = 20
 NITRO_QUERY_TIMEOUT_ERR = "Query not completed in the configured time. Please increase the query_timeout value in the asset config and try again."
+NITRO_ASSET_MIN_VAL_ERR = "Please specify the {0} value greater or equal to {1}. Ideally this value should be greater than the max events generated within a second on the device."
 NITRO_QUERY_COUNT = 50000
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"

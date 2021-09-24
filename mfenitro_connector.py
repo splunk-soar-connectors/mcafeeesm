@@ -69,13 +69,13 @@ class MFENitroConnector(BaseConnector):
 
         self._ingest_type = config.get('ingest_data', 'Events')
         self._version = config.get('version', '11')
-        self._verify = config['verify_server_cert']
+        self._verify = config.get('verify_server_cert', False)
         self._base_url = NITRO_BASE_URL.format(config["base_url"].strip('/'))
 
         self._base_url += 'v2/'
         self._username = base64.b64encode(config['username'].encode())
         self._password = base64.b64encode(config['password'].encode())
-        self._ingest_manner = config['ingest_manner']
+        self._ingest_manner = config.get('ingest_manner', 'oldest first')
         self._dup_data = 0
 
         return phantom.APP_SUCCESS
@@ -152,7 +152,8 @@ class MFENitroConnector(BaseConnector):
             return self._handle_error_response(login_response, action_result)
 
         if 'Xsrf-Token' not in login_response.headers:
-            return action_result.set_status(phantom.APP_ERROR, "Error creating session: Xsrf-Token not found in login response.")
+            return action_result.set_status(phantom.APP_ERROR,  # noqa
+                "Error creating session: Xsrf-Token not found in login response. Please verify the entered URL and user credentials.")
         self._headers = {'X-Xsrf-Token': login_response.headers['Xsrf-Token']}
 
         return phantom.APP_SUCCESS
@@ -325,7 +326,7 @@ class MFENitroConnector(BaseConnector):
             return action_result.get_status()
 
         if poll_time < NITRO_POLL_TIME_DEFAULT:
-            return action_result.set_status(phantom.APP_ERROR, "Please specify the poll time interval value greater than {0}".format(NITRO_POLL_TIME_DEFAULT))
+            return action_result.set_status(phantom.APP_ERROR, "Please specify the poll time interval value greater or equal to {0}".format(NITRO_POLL_TIME_DEFAULT))
 
         config[NITRO_JSON_POLL_TIME] = poll_time
 
@@ -335,9 +336,7 @@ class MFENitroConnector(BaseConnector):
             return action_result.get_status()
 
         if max_containers < NITRO_DEFAULT_MAX_CONTAINERS:
-            return action_result.set_status(phantom.APP_ERROR,
-                    "Please specify the {0} value greater than {1}. Ideally this value should be greater than the max events generated within a second on the device.".format(
-                        NITRO_JSON_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
+            return action_result.set_status(phantom.APP_ERROR, NITRO_ASSET_MIN_VALUE_ERR.format(NITRO_JSON_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
 
         config[NITRO_JSON_MAX_CONTAINERS] = max_containers
 
@@ -347,9 +346,7 @@ class MFENitroConnector(BaseConnector):
             return action_result.get_status()
 
         if first_max_containers < NITRO_DEFAULT_MAX_CONTAINERS:
-            return action_result.set_status(phantom.APP_ERROR,
-                    "Please specify the {0} value greater than {1}. Ideally this value should be greater than the max events generated within a second on the device.".format(
-                        NITRO_JSON_FIRST_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
+            return action_result.set_status(phantom.APP_ERROR, NITRO_ASSET_MIN_VAL_ERR.format(NITRO_JSON_FIRST_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
 
         config[NITRO_JSON_FIRST_MAX_CONTAINERS] = first_max_containers
 
@@ -539,7 +536,7 @@ class MFENitroConnector(BaseConnector):
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        return action_result.set_status(phantom.APP_SUCCESS, "Updated watchlist successfully")
+        return action_result.set_status(phantom.APP_SUCCESS, "Successfully updated the watchlist")
 
     def _get_events(self, param):
 

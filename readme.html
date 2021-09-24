@@ -14,11 +14,11 @@
     <p>
     The first thing to do is create the McAfee ESM asset in Phantom and fill up the Device URL, the Username and the Password. The other values can be left in the default state for now.
     <br>
-    However it's good practice to set the &quot;Label of the objects from this source&quot; to a <b>NEW ENTRY</b>. A recommended label would be <b>ESM Event</b> or <b>ESM Alarm</b>.
+    However, it's good practice to set the &quot;Label to apply to objects from this source&quot; to a <b>NEW ENTRY</b>. A recommended label would be <b>esm_event</b> or <b>esm_alarm</b>.
     </p>
     <br>
     <p>
-    Once the asset is saved, run Test Connectivity and make sure it passes. The Test Connectivity action attempts to validate the Username and the Password that the user has provided by connecting to the configured Device URL. The connection is tested by creating a session for the Username and Password pair, the session will be established upon the authentication of the credentials. Then the action also executes a query using the created session. And finally the created session is closed.
+    Once the asset is saved, run Test Connectivity and make sure it passes. The Test Connectivity action attempts to validate the Username and the Password that the user has provided by connecting to the configured Device URL. The connection is tested by creating a session for the Username and Password pair, the session will be established upon the authentication of the credentials. Then the action also executes a query using the created session. And finally, the created session is closed.
     <br>
     </p>
     <p>
@@ -40,26 +40,37 @@
     <br><br>
 <h2>POLL NOW</h2>
     <p>
-    POLL NOW should be used to get a sense of the containers and artifacts that are created by the app. The POLL NOW dialog allows the user to set the "Maximum containers" that should be ingested at this instance. Since a single container is created for each object, this value equates to the maximum number of objects that are ingested by the app. The app will fetch objects in the order they were created in the SIEM. The app allows the user to ingest objects up to 1 year old; this time interval can be configured in minutes using the <b>poll_time</b> asset config (e.g. to ingest objects that have been generated in the last 20 minutes, set this value to 20). However the query to ingest this data can be quite time consuming. In some cases the query will timeout with an error message <i>Query not completed in the configured time. Please increase the query_timeout value in the asset config and try again.</i> If you run into this error, you will need to tune the <b>poll_time</b> and <b>query_timeout</b> parameters to values that allow you to ingest enough data during POLL NOW within a large enough timeout value.
+    POLL NOW should be used to get a sense of the containers and artifacts that are created by the app. The POLL NOW dialog allows the user to set the "Maximum containers" that should be ingested at this instance. Since a single container is created for each object, this value equates to the maximum number of objects that are ingested by the app. The app will fetch objects in the order they were created in the SIEM. The app allows the user to ingest objects up to 1 year old; this time interval can be configured in minutes using the <b>poll_time</b> asset config (example: to ingest objects that have been generated in the last 20 minutes, set this value to 20). However, the query to ingest this data can be quite time consuming. In some cases, the query will timeout with an error message <i>Query not completed in the configured time. Please increase the query_timeout value in the asset config and try again.</i> If you run into this error, you will need to tune the <b>poll_time</b> and <b>query_timeout</b> parameters to values that allow you to ingest enough data during POLL NOW within a large enough timeout value.
     </p>
-<h2>Scheduled Polling</h2>
+<h2>Scheduled | Interval Polling</h2>
     <p>
        This mode is used to schedule a polling action on the asset at regular intervals, which is configured via the INGEST SETTINGS tab of the asset. It makes use of the following asset configuration parameters (among others):
 
     <ul>
-    <li>Maximum objects to poll first time</li>
+    <li>Maximum objects to poll the first time</li>
     The app detects the first time it is polling an asset and will ingest these number of objects (at the most). It will also use the <b>poll_time</b> value.
     <li>Maximum Containers for scheduled polling</li>
     For all scheduled polls after the first, the app will ingest these number of objects (at the most).
+    <li>How to ingest</li>
+    Should the app be ingesting the latest events/alarms or the oldest.
     </ul>
-    <p>In case of Scheduled Polling, on every poll, the app remembers the time of the last object that it has ingested and will continue from the this time in the next polling cycle.
+    <p>In the case of Scheduled | Interval Polling, on every poll, the app remembers the time of the last object that it has ingested and will continue from this time in the next polling cycle.
     For best results, keep the poll interval and <i>Maximum  Containers for scheduled polling</i> values close to the number of objects you would get within a time interval. This way, every poll will end up ingesting all of the new objects.<br>
-    It is also very important that the <i>Maximum Containers for scheduled  polling</i> configured should be greater than maximum objects that are generated <b>per second</b>. If the app detects it got the maximum configured objects and all occurred in the same second, it will start polling from the next second in the next polling cycle.
+    It is also very important that the <i>Maximum Containers for scheduled polling</i> configured should be greater than the maximum objects that are generated <b>per second</b>.
     </p>
+    <h3>How to ingest</h3>
+    <p>The app allows the user to configure how it should ingest objects on every scheduled poll either in the <i>oldest first</i> or the <i>latest first</i> order. Depending upon the scheduled interval and how busy the folder is, one of the following could potentially happen</p>
+    <ul>
+        <li>oldest first</li>
+            If the app is configured to poll too slowly and the device is so busy that on every poll the maximum ingested objects is less than the number of new objects, the app will never catch up.
+        <li>latest first</li>
+            If the app is configured to poll too slowly and the device is so busy that on every poll the maximum ingested objects is less than the number of new objects, the app will drop the older objects since it is ingesting the latest objects that were generated on McAfee ESM device.
+    </ul>
+
 <h2>Containers created</h2>
   As mentioned before, the app will create a single container for each object that it ingests with a single artifact called Event (or Alarm) Artifact.
   <h3>Filtering Events</h3>
-  Configure filters in the asset config <b>filters</b> field to limit the type and number of events that get ingested into Phantom (only the matching events get ingested). The filter format is a json string and defined by the McAfee ESM API. A simple e.g. could be:
+  Configure filters in the asset config <b>filters</b> field to limit the type and number of events that get ingested into Phantom (only the matching events get ingested). The filter format is a json string and defined by the McAfee ESM API. A simple example could be:
   <br><br>
   <pre>
    [{
@@ -72,17 +83,17 @@
     }]
    }]
 </pre>
-The McAfee ESM installation has documentation on this format and can be found at:
+The McAfee ESM has documentation on this format and can be found at:
 <ul>
-  <li>https://[mcafee_esm_ip]/rs/esm/help/commands/qryExecuteDetail</li>
-  <li>https://[mcafee_esm_ip]/rs/esm/help/types/EsmFilter</li>
+  <li>https://[mcafee_esm_ip]/rs/esm/v2/help/qryExecuteDetail</li>
+  <li>https://[mcafee_esm_ip]/rs/esm/v2/help/types/EsmFilter</li>
 </ul>
 Few things to note:
 <ul>
-  <li>The input is a json string which has to be a list. The action validates this.</li>
+  <li>The input is a json string that has to be a list. The action validates this.</li>
   <li>Not all event fields can be filtered on, to get the keys that can be used in a filter, look at the results of the <b>list fields</b> action.</li>
 </ul>
-A very common case is to filter on the event types. One way to accomplish this is to expand the event details and note down the Signature ID of the event that you want to ingest into Phantom. For example to ingest events named <b>User Logon</b>, note down the <i>Signature ID</i>. In the screen-shot below this happens to be <i>306-11</i>.
+A very common case is to filter on the event types. One way to accomplish this is to expand the event details and note down the Signature ID of the event that you want to ingest into Phantom. For example to ingest events named <b>User Logon</b>, note down the <i>Signature ID</i>. In the screenshot below this happens to be <i>306-11</i>.
     <br><br>
     <a href="/app_resource/mcafeeesm_1d20c51a-7f60-465b-a8e3-fc02967bec4d/img/esm_events.png">
         <img src="/app_resource/mcafeeesm_1d20c51a-7f60-465b-a8e3-fc02967bec4d/img/esm_events.png"/>
@@ -105,7 +116,7 @@ This value can then be used to match the key named <b>DSIDSigID</b> using the fi
 NOTE: This asset configuration parameter only applies to events, and thus is ignored when ingesting alarms.
 
 <h2>Event Artifact</h2>
-      The details regarding the event that are acquired from the API call to the McAfee SIEM will be collected and the data that are related to the type of event are all stored into the CEF fields and are added to the artifact. The fields that are present in the artifact greatly depend upon the type of the event that was created. Different events will have different types of values in the artifacts.
+      The details regarding the event that are acquired from the API call to the McAfee SIEM will be collected and the data that are related to the type of event are all stored into the CEF fields and are added to the artifact. The fields that are present in the artifact greatly depend upon the type of event that was created. Different events will have different types of values in the artifacts.
       <br><br>
     <a href="/app_resource/mcafeeesm_1d20c51a-7f60-465b-a8e3-fc02967bec4d/img/event_artifact.png">
         <img src="/app_resource/mcafeeesm_1d20c51a-7f60-465b-a8e3-fc02967bec4d/img/event_artifact.png"/>
