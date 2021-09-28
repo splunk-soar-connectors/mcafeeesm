@@ -316,7 +316,7 @@ class MFENitroConnector(BaseConnector):
             return action_result.get_status()
 
         if query_timeout < NITRO_DEFAULT_TIMEOUT_SECS:
-            return action_result.set_status(phantom.APP_ERROR, "Please specify a query timeout value greater or equal to {0}".format(NITRO_DEFAULT_TIMEOUT_SECS))
+            return action_result.set_status(phantom.APP_ERROR, "Please specify a query timeout value greater than or equal to {0}".format(NITRO_DEFAULT_TIMEOUT_SECS))
 
         config[NITRO_JSON_QUERY_TIMEOUT] = query_timeout
 
@@ -326,7 +326,7 @@ class MFENitroConnector(BaseConnector):
             return action_result.get_status()
 
         if poll_time < NITRO_POLL_TIME_DEFAULT:
-            return action_result.set_status(phantom.APP_ERROR, "Please specify the poll time interval value greater or equal to {0}".format(NITRO_POLL_TIME_DEFAULT))
+            return action_result.set_status(phantom.APP_ERROR, "Please specify the poll time interval value greater than or equal to {0}".format(NITRO_POLL_TIME_DEFAULT))
 
         config[NITRO_JSON_POLL_TIME] = poll_time
 
@@ -336,7 +336,7 @@ class MFENitroConnector(BaseConnector):
             return action_result.get_status()
 
         if max_containers < NITRO_DEFAULT_MAX_CONTAINERS:
-            return action_result.set_status(phantom.APP_ERROR, NITRO_ASSET_MIN_VALUE_ERR.format(NITRO_JSON_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
+            return action_result.set_status(phantom.APP_ERROR, NITRO_ASSET_MIN_VAL_ERR.format(NITRO_JSON_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
 
         config[NITRO_JSON_MAX_CONTAINERS] = max_containers
 

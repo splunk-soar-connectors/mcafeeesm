@@ -72,7 +72,7 @@
         },
         "max_containers": {
             "data_type": "numeric",
-            "description": "Maximum objects for scheduled polling (greater or equal to 10)",
+            "description": "Maximum objects for scheduled polling (greater than or equal to 10)",
             "order": 7,
             "default": 100
         },
@@ -89,19 +89,19 @@
         "first_run_max_events": {
             "data_type": "numeric",
             "order": 9,
-            "description": "Maximum objects to poll first time (gretaer or equal to 10)",
+            "description": "Maximum objects to poll first time (greater than or equal to 10)",
             "default": 2000
         },
         "poll_time": {
             "data_type": "numeric",
             "order": 10,
-            "description": "Ingest objects in last N minutes (POLL NOW and First Run) (gretaer or equal to 2)",
+            "description": "Ingest objects in last N minutes (POLL NOW and First Run) (greater than or equal to 2)",
             "default": 2
         },
         "query_timeout": {
             "data_type": "numeric",
             "order": 11,
-            "description": "Max Time to wait for query to finish (seconds) (greater or equal to 20)",
+            "description": "Max Time to wait for query to finish (seconds) (greater than or equal to 20)",
             "default": 20
         },
         "timezone": {
@@ -142,13 +142,19 @@
                     "data_path": "action_result.data.*.name",
                     "data_type": "string",
                     "column_name": "Field Name",
-                    "column_order": 0
+                    "column_order": 0,
+                    "example_values": [
+                        "HostID"
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.types.*",
                     "data_type": "string",
                     "column_name": "Types",
-                    "column_order": 1
+                    "column_order": 1,
+                    "example_values": [
+                        "STRING"
+                    ]
                 },
                 {
                     "data_path": "action_result.summary.total_fields",
@@ -235,11 +241,17 @@
                     "data_path": "action_result.data.*.name",
                     "data_type": "string",
                     "column_name": "Watchlist Name",
-                    "column_order": 0
+                    "column_order": 0,
+                    "example_values": [
+                        "IP watchlist"
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.customType.name",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "IPAddress"
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.id.value",
@@ -248,13 +260,19 @@
                     "contains": [
                         "esm watchlist id"
                     ],
-                    "column_order": 3
+                    "column_order": 3,
+                    "example_values": [
+                        3
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.valueCount",
                     "data_type": "numeric",
                     "column_name": "Number Of Entries",
-                    "column_order": 2
+                    "column_order": 2,
+                    "example_values": [
+                        5
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.scored",
@@ -295,7 +313,10 @@
                     "data_path": "action_result.data.*.type.name",
                     "data_type": "string",
                     "column_name": "Watchlist Type",
-                    "column_order": 1
+                    "column_order": 1,
+                    "example_values": [
+                        "IPAddress"
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.type.id",
@@ -564,6 +585,7 @@
         {
             "action": "update watchlist",
             "description": "Add an entry to a specific watchlist as configured in the ESM",
+            "verbose": "Note: If invalid values or values which already exist in the watchlist are entered in the 'values_to_add' parameter, the action will pass but the watchlist will not be updated. Hence make sure the value entered in the 'values_to_add' is valid.",
             "type": "generic",
             "identifier": "update_watchlist",
             "read_only": false,
@@ -581,7 +603,7 @@
                 "values_to_add": {
                     "data_type": "string",
                     "order": 1,
-                    "description": "Comma separated list of values to add to the watchlist. (e.g. '10.10.10.10, 192.168.1.4, 172.16.32.32')",
+                    "description": "Comma separated list of values to add to the watchlist",
                     "required": true
                 }
             },
@@ -598,7 +620,8 @@
                     "data_path": "action_result.parameter.values_to_add",
                     "data_type": "string",
                     "example_values": [
-                        "10.0.0.1"
+                        "10.0.0.1",
+                        "10.10.10.10, 192.168.1.4, 172.16.32.32"
                     ]
                 },
                 {
@@ -649,7 +672,7 @@
                     "data_path": "action_result.message",
                     "data_type": "string",
                     "example_values": [
-                        "Updated watchlist successfully "
+                        "Successfully updated the watchlist"
                     ]
                 },
                 {
