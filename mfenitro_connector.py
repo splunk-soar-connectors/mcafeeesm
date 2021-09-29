@@ -117,7 +117,7 @@ class MFENitroConnector(BaseConnector):
 
         return error_text
 
-    def _validate_integer(self, action_result, parameter, key):
+    def _validate_integer(self, action_result, parameter, key, allow_zero=False):
         if parameter is not None:
             try:
                 if not float(parameter).is_integer():
@@ -130,6 +130,9 @@ class MFENitroConnector(BaseConnector):
             if parameter < 0:
                 return action_result.set_status(phantom.APP_ERROR, "Please provide a valid non-negative integer value in the {}".format(key)), None
 
+            if not allow_zero and parameter == 0:
+                return action_result.set_status(phantom.APP_ERROR, "Please provide a positive integer value in the '{}' parameter".format(key)), None
+
         return phantom.APP_SUCCESS, parameter
 
     def _create_session(self, action_result):
@@ -138,7 +141,7 @@ class MFENitroConnector(BaseConnector):
 
         self._session = requests.Session()
 
-        login_url = self._base_url + 'login'
+        login_url = "{}login".format(self._base_url)
 
         # login using the credentials
         try:
@@ -162,7 +165,7 @@ class MFENitroConnector(BaseConnector):
 
         data = response.text
 
-        if ('application/json' in response.headers.get('Content-Type')) and (data):
+        if ('application/json' in response.headers.get('Content-Type')) and data:
             data = data.replace('{', '{{').replace('}', '}}')
 
         message = "Status Code: {0}. Data: {1}".format(response.status_code, data if data else 'Not Specified')
@@ -181,7 +184,7 @@ class MFENitroConnector(BaseConnector):
 
         try:
             result = request_func(
-                    self._base_url + endpoint,
+                    "{}{}".format(self._base_url, endpoint),
                     json=data,
                     params=params,
                     headers=self._headers,
@@ -189,7 +192,6 @@ class MFENitroConnector(BaseConnector):
         except Exception as e:
             err = self._get_error_message_from_exception(e)
             return action_result.set_status(phantom.APP_ERROR, "Error connecting to Device: {0}".format(err)), None
-        self.debug_print("[make rest call] result: {}".format(str(result)))
 
         # The only status code that is success for posts is 200
         if result.status_code != 200:
@@ -227,7 +229,7 @@ class MFENitroConnector(BaseConnector):
 
         self.save_progress("Session created, testing Query")
 
-        ret_val, response = self._make_rest_call(action_result, TEST_QUERY)
+        ret_val, response = self._make_rest_call(action_result, NITRO_TEST_QUERY)
 
         if phantom.is_fail(ret_val):
             self.save_progress("Test Connectivity failed")
@@ -243,7 +245,7 @@ class MFENitroConnector(BaseConnector):
 
     def _clean_response(self, input_dict):
 
-        if (input_dict is None):
+        if input_dict is None:
             return 'Input dict is None'
 
         string = json.dumps(input_dict)
@@ -257,14 +259,14 @@ class MFENitroConnector(BaseConnector):
         to_tz = pytz.timezone(device_tz_sting)
 
         # get the time string passed into a datetime object
-        last_time = datetime.strptime(last_time, DATETIME_FORMAT)
+        last_time = datetime.strptime(last_time, NITRO_DATETIME_FORMAT)
         last_time = last_time.replace(tzinfo=to_tz)
 
         # add a second to it
         last_time = last_time + timedelta(seconds=1)
 
         # format it
-        return last_time.strftime(DATETIME_FORMAT)
+        return last_time.strftime(NITRO_DATETIME_FORMAT)
 
     def _get_first_start_time(self):
 
@@ -272,7 +274,7 @@ class MFENitroConnector(BaseConnector):
 
         # Get the poll time in minutes
         poll_time = config.get(NITRO_JSON_POLL_TIME, NITRO_POLL_TIME_DEFAULT)
-        ret_val, poll_time = self._validate_integer(self, poll_time, POLL_TIME_KEY)
+        ret_val, poll_time = self._validate_integer(self, poll_time, NITRO_POLL_TIME_KEY, allow_zero=True)
         if phantom.is_fail(ret_val):
             return self.get_status()
 
@@ -287,7 +289,7 @@ class MFENitroConnector(BaseConnector):
         # convert it to the timezone of the device
         to_dt = to_tz.normalize(start_time.astimezone(to_tz))
 
-        return to_dt.strftime(DATETIME_FORMAT)
+        return to_dt.strftime(NITRO_DATETIME_FORMAT)
 
     def _get_end_time(self):
 
@@ -303,7 +305,7 @@ class MFENitroConnector(BaseConnector):
         # convert it to the timezone of the device
         to_dt = to_tz.normalize(end_time.astimezone(to_tz))
 
-        return to_dt.strftime(DATETIME_FORMAT)
+        return to_dt.strftime(NITRO_DATETIME_FORMAT)
 
     def _validate_my_config(self, action_result):
 
@@ -311,7 +313,7 @@ class MFENitroConnector(BaseConnector):
 
         # validate the query timeout
         query_timeout = config.get(NITRO_JSON_QUERY_TIMEOUT, NITRO_DEFAULT_TIMEOUT_SECS)
-        ret_val, query_timeout = self._validate_integer(action_result, query_timeout, QUERY_TIMEOUT_KEY)
+        ret_val, query_timeout = self._validate_integer(action_result, query_timeout, NITRO_QUERY_TIMEOUT_KEY, allow_zero=True)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
@@ -321,7 +323,7 @@ class MFENitroConnector(BaseConnector):
         config[NITRO_JSON_QUERY_TIMEOUT] = query_timeout
 
         poll_time = config.get(NITRO_JSON_POLL_TIME, NITRO_POLL_TIME_DEFAULT)
-        ret_val, poll_time = self._validate_integer(action_result, poll_time, POLL_TIME_KEY)
+        ret_val, poll_time = self._validate_integer(action_result, poll_time, NITRO_POLL_TIME_KEY, allow_zero=True)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
@@ -331,7 +333,7 @@ class MFENitroConnector(BaseConnector):
         config[NITRO_JSON_POLL_TIME] = poll_time
 
         max_containers = config.get(NITRO_JSON_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS)
-        ret_val, max_containers = self._validate_integer(action_result, max_containers, MAX_CONTAINERS_KEY)
+        ret_val, max_containers = self._validate_integer(action_result, max_containers, NITRO_MAX_CONTAINERS_KEY, allow_zero=True)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
@@ -341,7 +343,7 @@ class MFENitroConnector(BaseConnector):
         config[NITRO_JSON_MAX_CONTAINERS] = max_containers
 
         first_max_containers = config.get(NITRO_JSON_FIRST_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS)
-        ret_val, first_max_containers = self._validate_integer(action_result, first_max_containers, FIRST_MAX_CONTAINERS_KEY)
+        ret_val, first_max_containers = self._validate_integer(action_result, first_max_containers, NITRO_FIRST_MAX_CONTAINERS_KEY, allow_zero=True)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
@@ -395,7 +397,7 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Failed to create the session. Cannot continue")
             return self.get_status()
 
-        ret_val, resp_data = self._make_rest_call(action_result, GET_WATCHLISTS_URL)
+        ret_val, resp_data = self._make_rest_call(action_result, NITRO_GET_WATCHLISTS_URL)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
@@ -427,7 +429,7 @@ class MFENitroConnector(BaseConnector):
             return self.get_status()
 
         watchlist_id = param["watchlist_id"]
-        ret_val, watchlist_id = self._validate_integer(action_result, watchlist_id, WATCHLIST_ID_KEY)
+        ret_val, watchlist_id = self._validate_integer(action_result, watchlist_id, NITRO_WATCHLIST_ID_KEY)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
@@ -452,7 +454,7 @@ class MFENitroConnector(BaseConnector):
             values_file_id = details_return_value["valueFile"]["fileToken"]
             values_body = {"file": {"id": values_file_id}}
         except:
-            return action_result.set_status(phantom.APP_ERROR, "Could not get the file id from the details for watchlist id: {0}".format(watchlist_id))
+            return action_result.set_status(phantom.APP_ERROR, "Could not get the file token from the details for watchlist id: {0}".format(watchlist_id))
 
         # If fileSize is less than pos then make_rest_call to get remaining data
         pos = 0
@@ -467,6 +469,9 @@ class MFENitroConnector(BaseConnector):
 
             fileSize = values_return_value["fileSize"]
             value_dict_list = []
+
+            if fileSize == 0:
+                break
 
             if fileSize > 0:
                 value_list = values_return_value["data"].splitlines()
@@ -521,7 +526,7 @@ class MFENitroConnector(BaseConnector):
                 return action_result.set_status(phantom.APP_ERROR, "Unable to parse the 'values to add' list string Error: {0}".format(err))
 
         w_value = param["watchlist_id"]
-        ret_val, w_value = self._validate_integer(action_result, w_value, WATCHLIST_ID_KEY)
+        ret_val, w_value = self._validate_integer(action_result, w_value, NITRO_WATCHLIST_ID_KEY)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
@@ -553,7 +558,7 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Failed to create the session. Cannot continue")
             return self.get_status()
 
-        fields = param.get("field_list", DEFAULT_FIELD_LIST)
+        fields = param.get("field_list", NITRO_DEFAULT_FIELD_LIST)
         if type(fields) is list:
             fields = fields
         elif type(fields) is str:
@@ -568,7 +573,7 @@ class MFENitroConnector(BaseConnector):
         event_id = param['event_id']
         data = {"eventId": event_id, "fields": field_list}
 
-        ret_val, resp_data = self._make_rest_call(action_result, GET_EVENTS_URL, data=data)
+        ret_val, resp_data = self._make_rest_call(action_result, NITRO_GET_EVENTS_URL, data=data)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
@@ -709,7 +714,7 @@ class MFENitroConnector(BaseConnector):
             req_block['config']['fields'].extend(field_list)
             req_block['config']['fields'].extend(request_fields.common_fields)
 
-            if (filter_dict):
+            if filter_dict:
                 req_block['config']['filters'] = filter_dict
 
             else:
@@ -749,7 +754,7 @@ class MFENitroConnector(BaseConnector):
     def _perform_calls(self, req_json, action_result, query_timeout):
 
         # Execute Query
-        ret_val, ack_data = self._make_rest_call(action_result, EXECUTE_QUERY_URL, data=req_json)
+        ret_val, ack_data = self._make_rest_call(action_result, NITRO_EXECUTE_QUERY_URL, data=req_json)
         if phantom.is_fail(ret_val):
             return action_result.get_status(), None
 
@@ -772,7 +777,7 @@ class MFENitroConnector(BaseConnector):
         result_req_json = {"resultID": result_id}
 
         # Ignoring the results of the status as a failed query will be handled with no result
-        ret_val, ret_data = self._make_rest_call(action_result, GET_RESULTS_URL, data=result_req_json)
+        ret_val, ret_data = self._make_rest_call(action_result, NITRO_GET_RESULTS_URL, data=result_req_json)
 
         if phantom.is_fail(ret_val):
             ret_data = {}
@@ -788,7 +793,7 @@ class MFENitroConnector(BaseConnector):
         self.send_progress("Query complete: 0 %")
         for retry in range(0, query_timeout, EWS_SLEEP_SECS):
             time.sleep(EWS_SLEEP_SECS)
-            ret_val, ret_data = self._make_rest_call(action_result, GET_STATUS_URL, data=result_req_json)
+            ret_val, ret_data = self._make_rest_call(action_result, NITRO_GET_STATUS_URL, data=result_req_json)
 
             if phantom.is_fail(ret_val):
                 # The query to get the status of the query failed, treat it as a transient issue and try again
@@ -827,7 +832,7 @@ class MFENitroConnector(BaseConnector):
 
             # convert what we got into ZULU, This is a bit whack, Nitro requires the string to contain T and Z
             # but the time between these 2 chars has to be in the timezone configured on the device
-            self._state[NITRO_JSON_LAST_DATE_TIME_EVENTS] = datetime.strptime(last_date_time, NITRO_RESP_DATETIME_FORMAT).strftime(DATETIME_FORMAT)
+            self._state[NITRO_JSON_LAST_DATE_TIME_EVENTS] = datetime.strptime(last_date_time, NITRO_RESP_DATETIME_FORMAT).strftime(NITRO_DATETIME_FORMAT)
 
             date_strings = [x["Alert.FirstTime"] for x in events]
 
@@ -846,8 +851,8 @@ class MFENitroConnector(BaseConnector):
         # changing the nitro keys to camel case to match cef formatting
         name = re.sub('[^A-Za-z0-9]+', '', key)
         name = name[0].lower() + name[1:]
-        if name in list(CEF_MAP.keys()):
-            name = CEF_MAP[name]
+        if name in list(NITRO_CEF_MAP.keys()):
+            name = NITRO_CEF_MAP[name]
         return name
 
     def _frame_cef_dict(self, raw_event_data):
@@ -857,7 +862,7 @@ class MFENitroConnector(BaseConnector):
 
         for key, v in list(raw_event_data.items()):
 
-            if (v == '0'):
+            if v == '0':
                 # A bit dangerous to ignore keys with '0' in them, however the older versions of the app
                 # would do it and no one complained, in any case the raw data is present in the container
                 # we are removing this key only from the cef dictionary, so should be fine
@@ -875,10 +880,10 @@ class MFENitroConnector(BaseConnector):
 
         # create the source data identifier
         """
-        sdi_part1 = event_data["columns"].index(FIRST_DICT)
-        sdi_part2 = event_data["columns"].index(MSG_DICT)
+        sdi_part1 = event_data["columns"].index(NITRO_FIRST_DICT)
+        sdi_part2 = event_data["columns"].index(NITRO_MSG_DICT)
         sdidentifier = event_data["values"][sdi_part2] + event_data["values"][sdi_part1]
-        sdi = event_data["values"][event_data["columns"].index(ID_DICT)] + sdidentifier
+        sdi = event_data["values"][event_data["columns"].index(NITRO_ID_DICT)] + sdidentifier
         """
         rule_msg = event_data.get('Rule.msg', 'Unknown.Rule.Msg')
         first_time = event_data.get('Alert.FirstTime', '')
@@ -886,10 +891,10 @@ class MFENitroConnector(BaseConnector):
 
         container.update(_container_common)
         container['source_data_identifier'] = sdi
-        container['name'] = rule_msg + " at " + first_time
+        container['name'] = "{} at {}".format(rule_msg, first_time)
         container['data'] = {'raw_event': event_data}
         ret_val, message, container_id = self.save_container(container)
-        self.debug_print(CREATE_CONTAINER_RESPONSE.format(ret_val, message, container_id))
+        self.debug_print(NITRO_CREATE_CONTAINER_RESPONSE.format(ret_val, message, container_id))
 
         if phantom.is_fail(ret_val):
             message = "Failed to add Container error msg: {0}".format(message)
@@ -937,7 +942,7 @@ class MFENitroConnector(BaseConnector):
             max_alarms = limit
 
             while True:
-                ret_val, resp_data = self._make_rest_call(action_result, GET_ALARMS_URL, params=params)
+                ret_val, resp_data = self._make_rest_call(action_result, NITRO_GET_ALARMS_URL, params=params)
 
                 if resp_data == []:
                     break
@@ -957,7 +962,7 @@ class MFENitroConnector(BaseConnector):
                     container['source_data_identifier'] = alarm['id']
                     container['data'] = {'raw_alarm': alarm}
                     ret_val, message, container_id = self.save_container(container)
-                    self.debug_print(CREATE_CONTAINER_RESPONSE.format(ret_val, message, container_id))
+                    self.debug_print(NITRO_CREATE_CONTAINER_RESPONSE.format(ret_val, message, container_id))
 
                     if phantom.is_fail(ret_val):
                         message = "Failed to add Container error msg: {0}".format(message)
@@ -992,7 +997,7 @@ class MFENitroConnector(BaseConnector):
                 if self.is_poll_now():
                     break
                 self._state[NITRO_JSON_LAST_DATE_TIME_ALARMS] = (datetime.strptime(alarm_list[end-1]['triggeredDate'],  # noqa
-                    NITRO_RESP_DATETIME_FORMAT)).strftime(DATETIME_FORMAT)
+                    NITRO_RESP_DATETIME_FORMAT)).strftime(NITRO_DATETIME_FORMAT)
 
                 total_ingested += max_alarms - self._dup_data
                 if len(alarm_list) < limit or total_ingested == limit:
@@ -1005,7 +1010,7 @@ class MFENitroConnector(BaseConnector):
         else:
             params['pageSize'] = limit
 
-            ret_val, resp_data = self._make_rest_call(action_result, GET_ALARMS_URL, params=params)
+            ret_val, resp_data = self._make_rest_call(action_result, NITRO_GET_ALARMS_URL, params=params)
 
             if phantom.is_fail(ret_val):
                 return action_result.get_status()
@@ -1020,7 +1025,7 @@ class MFENitroConnector(BaseConnector):
                 container['source_data_identifier'] = alarm['id']
                 container['data'] = {'raw_alarm': alarm}
                 ret_val, message, container_id = self.save_container(container)
-                self.debug_print(CREATE_CONTAINER_RESPONSE.format(ret_val, message, container_id))
+                self.debug_print(NITRO_CREATE_CONTAINER_RESPONSE.format(ret_val, message, container_id))
 
                 if phantom.is_fail(ret_val):
                     message = "Failed to add Container error msg: {0}".format(message)
@@ -1051,7 +1056,7 @@ class MFENitroConnector(BaseConnector):
 
             if not self.is_poll_now():
                 self._state[NITRO_JSON_LAST_DATE_TIME_ALARMS] = (datetime.strptime(resp_data[-1]['triggeredDate'],  # noqa
-                    NITRO_RESP_DATETIME_FORMAT)).strftime(DATETIME_FORMAT)
+                    NITRO_RESP_DATETIME_FORMAT)).strftime(NITRO_DATETIME_FORMAT)
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
@@ -1130,8 +1135,6 @@ class MFENitroConnector(BaseConnector):
 
             if i == 0:
                 self.save_progress("Got {0} event{1}", no_of_events, '' if (no_of_events == 1) else 's')
-
-            if i == 0:
                 result_rows = [dict() for x in range(0, no_of_events)]
 
             # The app makes multiple queries to the device, each time asking for a list of fields for max number of events that occurred between a time range
@@ -1233,14 +1236,14 @@ if __name__ == '__main__':
             data['csrfmiddlewaretoken'] = csrftoken
 
             headers = dict()
-            headers['Cookie'] = 'csrftoken=' + csrftoken
+            headers['Cookie'] = 'csrftoken={}'.format(csrftoken)
             headers['Referer'] = login_url
 
             print("Logging into Platform to get the session id")
             r2 = requests.post(login_url, verify=False, data=data, headers=headers)
             session_id = r2.cookies['sessionid']
         except Exception as e:
-            print("Unable to get session id from the platfrom. Error: " + str(e))
+            print("Unable to get session id from the platfrom. Error: {}".format(str(e)))
             exit(1)
 
     with open(args.input_test_json) as f:

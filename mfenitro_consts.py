@@ -16,28 +16,26 @@ NITRO_JSON_FILTERS = "filters"
 NITRO_JSON_QUERY_TIMEOUT = "query_timeout"
 
 NITRO_BASE_URL = "{0}/rs/esm/"
-GET_STATUS_URL = "qryGetStatus"
-GET_EVENTS_URL = "qryGetCorrEventDataForID?queryType=EVENT"
-TEST_QUERY = "qryGetSelectFields?type=EVENT&groupType=NO_GROUP"
-EXECUTE_QUERY_URL = "qryExecuteDetail?type=EVENT&reverse=false"
-GET_ALARMS_URL = "alarmGetTriggeredAlarms"
-GET_RESULTS_URL = "qryGetResults?startPos=0&numRows=1000000&reverse=false"
-GET_WATCHLISTS_URL = "sysGetWatchlists?hidden=true&dynamic=true&writeOnly=true&indexedOnly=true"
+NITRO_GET_STATUS_URL = "qryGetStatus"
+NITRO_GET_EVENTS_URL = "qryGetCorrEventDataForID?queryType=EVENT"
+NITRO_TEST_QUERY = "qryGetSelectFields?type=EVENT&groupType=NO_GROUP"
+NITRO_EXECUTE_QUERY_URL = "qryExecuteDetail?type=EVENT&reverse=false"
+NITRO_GET_ALARMS_URL = "alarmGetTriggeredAlarms"
+NITRO_GET_RESULTS_URL = "qryGetResults?startPos=0&numRows=1000000&reverse=false"
+NITRO_GET_WATCHLISTS_URL = "sysGetWatchlists?hidden=true&dynamic=true&writeOnly=true&indexedOnly=true"
 
-CEF_MAP = {"dstMac": "destinationMacAddress", "dstIP": "destinationAddress", "srcIP": "sourceAddress", "srcMac": "sourceMacAddress"}
-QUERY_MAX_WAIT_TIME = 5
-CEF_EXCLUDE = [u'', '', "0", u'0']
-ID_DICT = {'name': 'Alert.ID'}
-FIRST_DICT = {'name': 'Alert.FirstTime'}
-MSG_DICT = {'name': 'Rule.msg'}
-DEFAULT_FIELD_LIST = ["LastTime", "Rule.msg", "DSIDSigID", "SrcIP", "DstIP"]
-CREATE_CONTAINER_RESPONSE = "save_container returns, value: {0}, reason: {1}, id: {2}"
+NITRO_CEF_MAP = {"dstMac": "destinationMacAddress", "dstIP": "destinationAddress", "srcIP": "sourceAddress", "srcMac": "sourceMacAddress"}
+NITRO_ID_DICT = {'name': 'Alert.ID'}
+NITRO_FIRST_DICT = {'name': 'Alert.FirstTime'}
+NITRO_MSG_DICT = {'name': 'Rule.msg'}
+NITRO_DEFAULT_FIELD_LIST = ["LastTime", "Rule.msg", "DSIDSigID", "SrcIP", "DstIP"]
+NITRO_CREATE_CONTAINER_RESPONSE = "save_container returns, value: {0}, reason: {1}, id: {2}"
 NITRO_DEFAULT_TIMEOUT_SECS = 20
 NITRO_QUERY_TIMEOUT_ERR = "Query not completed in the configured time. Please increase the query_timeout value in the asset config and try again."
 NITRO_ASSET_MIN_VAL_ERR = "Please specify the {0} value greater or equal to {1}. Ideally this value should be greater than the max events generated within a second on the device."
 NITRO_QUERY_COUNT = 50000
 
-DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+NITRO_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 NITRO_RESP_DATETIME_FORMAT = "%m/%d/%Y %H:%M:%S"
 
 NITRO_DEFAULT_MAX_CONTAINERS = 10
@@ -59,8 +57,8 @@ NITRO_ERR_MSG_UNAVAILABLE = "Error message unavailable. Please check the asset c
 NITRO_PARSE_ERR_MSG = "Unable to parse the error message. Please check the asset configuration and|or action parameters"
 
 # Validate int parameters msg
-MAX_CONTAINERS_KEY = "'max containers' configuration parameter"
-FIRST_MAX_CONTAINERS_KEY = "'first run max events' configuration parameter"
-POLL_TIME_KEY = "'poll time' configuration parameter"
-QUERY_TIMEOUT_KEY = "'query timeout' configuration parameter"
-WATCHLIST_ID_KEY = "'watchlist id' action parameter"
+NITRO_MAX_CONTAINERS_KEY = "'max containers' configuration parameter"
+NITRO_FIRST_MAX_CONTAINERS_KEY = "'first run max events' configuration parameter"
+NITRO_POLL_TIME_KEY = "'poll time' configuration parameter"
+NITRO_QUERY_TIMEOUT_KEY = "'query timeout' configuration parameter"
+NITRO_WATCHLIST_ID_KEY = "'watchlist id' action parameter"
