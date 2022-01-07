@@ -1,3 +1,15 @@
+[comment]: # "Auto-generated SOAR connector documentation"
+# McAfee ESM
+
+Publisher: Phantom  
+Connector Version: 2\.0\.6  
+Product Vendor: McAfee  
+Product Name: McAfee ESM  
+Product Version Supported (regex): "\.\*"  
+Minimum Product Version: 3\.5\.210  
+
+This app integrates with an instance of McAfee ESM to perform investigative and ingestion actions
+
 [comment]: # "File: readme.md"
 [comment]: # "Copyright (c) 2016-2018 Splunk Inc."
 [comment]: # ""
@@ -157,3 +169,186 @@ of the event that was created. Different events will have different types of val
 artifacts.  
   
 [![](img/event_artifact.png)](img/event_artifact.png)  
+
+
+### Configuration Variables
+The below configuration variables are required for this Connector to operate.  These variables are specified when configuring a McAfee ESM asset in SOAR.
+
+VARIABLE | REQUIRED | TYPE | DESCRIPTION
+-------- | -------- | ---- | -----------
+**base\_url** |  required  | string | Device URL, e\.g\. https\://myesm\.enterprise\.com
+**verify\_server\_cert** |  required  | boolean | Verify server certificate
+**username** |  required  | string | User name
+**password** |  required  | password | Password
+**version** |  optional  | string | Version
+**ingest\_data** |  optional  | string | Type of data to ingest
+**filters** |  optional  | string | List of filters \(JSON\)
+**max\_containers** |  required  | numeric | Maximum objects for scheduled polling
+**first\_run\_max\_events** |  required  | numeric | Maximum objects to poll first time
+**poll\_time** |  optional  | numeric | Ingest objects in last N minutes \(POLL NOW and First Run\)
+**query\_timeout** |  optional  | numeric | Max Time to wait for query to finish \(seconds\)
+**timezone** |  required  | timezone | Timezone configured on device
+
+### Supported Actions  
+[test connectivity](#action-test-connectivity) - Validates the credentials  
+[list fields](#action-list-fields) - List the fields available to be used in filters  
+[on poll](#action-on-poll) - Ingest Events or Alarms from ESM  
+[list watchlists](#action-list-watchlists) - List the watchlists configured in ESM  
+[get events](#action-get-events) - Get the events associated with a correlated event ID  
+[get watchlist](#action-get-watchlist) - Get the details for a specific watchlist and the values in that watchlist as configured in the ESM  
+[update watchlist](#action-update-watchlist) - Add an entry to a specific watchlist as configured in the ESM  
+
+## action: 'test connectivity'
+Validates the credentials
+
+Type: **test**  
+Read only: **True**
+
+#### Action Parameters
+No parameters are required for this action
+
+#### Action Output
+No Output  
+
+## action: 'list fields'
+List the fields available to be used in filters
+
+Type: **generic**  
+Read only: **True**
+
+#### Action Parameters
+No parameters are required for this action
+
+#### Action Output
+DATA PATH | TYPE | CONTAINS
+--------- | ---- | --------
+action\_result\.data\.\*\.name | string | 
+action\_result\.data\.\*\.types | string | 
+action\_result\.status | string | 
+action\_result\.message | string | 
+action\_result\.summary\.total\_fields | numeric | 
+summary\.total\_objects | numeric | 
+summary\.total\_objects\_successful | numeric |   
+
+## action: 'on poll'
+Ingest Events or Alarms from ESM
+
+Type: **ingest**  
+Read only: **True**
+
+#### Action Parameters
+PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
+--------- | -------- | ----------- | ---- | --------
+**start\_time** |  optional  | Start of time range, in epoch time \(milliseconds\) | numeric | 
+**end\_time** |  optional  | End of time range, in epoch time \(milliseconds\) | numeric | 
+**container\_count** |  optional  | Maximum number of container records to query for | numeric | 
+**artifact\_count** |  optional  | Maximum number of artifact records to query for | numeric | 
+
+#### Action Output
+No Output  
+
+## action: 'list watchlists'
+List the watchlists configured in ESM
+
+Type: **investigate**  
+Read only: **True**
+
+#### Action Parameters
+No parameters are required for this action
+
+#### Action Output
+DATA PATH | TYPE | CONTAINS
+--------- | ---- | --------
+action\_result\.data\.\*\.name | string | 
+action\_result\.data\.\*\.customType\.name | string | 
+action\_result\.data\.\*\.id\.value | numeric |  `esm watchlist id` 
+action\_result\.data\.\*\.valueCount | numeric | 
+action\_result\.data\.\*\.scored | string | 
+action\_result\.data\.\*\.errorMsg | string | 
+action\_result\.data\.\*\.dynamic | string | 
+action\_result\.data\.\*\.source | string | 
+action\_result\.data\.\*\.active | string | 
+action\_result\.data\.\*\.type\.name | string | 
+action\_result\.status | string | 
+action\_result\.message | string | 
+action\_result\.summary\.total\_fields | numeric | 
+summary\.total\_objects | numeric | 
+summary\.total\_objects\_successful | numeric |   
+
+## action: 'get events'
+Get the events associated with a correlated event ID
+
+Type: **investigate**  
+Read only: **True**
+
+#### Action Parameters
+PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
+--------- | -------- | ----------- | ---- | --------
+**event\_id** |  required  | Event ID in the McAfee ESM | numeric |  `esm event id` 
+**field\_list** |  optional  | Comma separated list of event fields to get | string | 
+
+#### Action Output
+DATA PATH | TYPE | CONTAINS
+--------- | ---- | --------
+action\_result\.status | string | 
+action\_result\.parameter\.field\_list | string | 
+action\_result\.parameter\.event\_id | string |  `esm event id` 
+action\_result\.data\.\*\.Rule\_msg | string | 
+action\_result\.data\.\*\.DSIDSigID | string | 
+action\_result\.data\.\*\.SrcIP | string | 
+action\_result\.data\.\*\.DstIP | string | 
+action\_result\.data\.\*\.LastTime | string | 
+action\_result\.message | string | 
+action\_result\.summary\.total\_values | numeric | 
+summary\.total\_objects | numeric | 
+summary\.total\_objects\_successful | numeric |   
+
+## action: 'get watchlist'
+Get the details for a specific watchlist and the values in that watchlist as configured in the ESM
+
+Type: **investigate**  
+Read only: **True**
+
+#### Action Parameters
+PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
+--------- | -------- | ----------- | ---- | --------
+**watchlist\_id** |  required  | Watchlist ID in the McAfee ESM | numeric |  `esm watchlist id` 
+
+#### Action Output
+DATA PATH | TYPE | CONTAINS
+--------- | ---- | --------
+action\_result\.parameter\.watchlist\_id | string |  `esm watchlist id` 
+action\_result\.summary\.name | string | 
+action\_result\.summary\.type | string | 
+action\_result\.data\.\*\.values | string | 
+action\_result\.status | string | 
+action\_result\.message | string | 
+action\_result\.summary\.total\_values | numeric | 
+summary\.total\_objects | numeric | 
+summary\.total\_objects\_successful | numeric |   
+
+## action: 'update watchlist'
+Add an entry to a specific watchlist as configured in the ESM
+
+Type: **correct**  
+Read only: **False**
+
+#### Action Parameters
+PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
+--------- | -------- | ----------- | ---- | --------
+**watchlist\_id** |  required  | Watchlist ID in the McAfee ESM | numeric |  `esm watchlist id` 
+**values\_to\_add** |  required  | Comma separated list of values to add to the watchlist\. \(e\.g\. '10\.10\.10\.10, 192\.168\.1\.4, 172\.16\.32\.32'\) | string | 
+
+#### Action Output
+DATA PATH | TYPE | CONTAINS
+--------- | ---- | --------
+action\_result\.parameter\.values\_to\_add | string | 
+action\_result\.parameter\.watchlist\_id | string |  `esm watchlist id` 
+action\_result\.summary\.name | string | 
+action\_result\.summary\.type | string | 
+action\_result\.data\.\*\.values | string | 
+action\_result\.status | string | 
+action\_result\.message | string | 
+action\_result\.summary\.total\_values | numeric | 
+summary\.total\_objects | numeric | 
+summary\.total\_objects\_successful | numeric | 
