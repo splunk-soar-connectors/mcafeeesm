@@ -1,6 +1,5 @@
 # File: mfenitro_consts.py
-#
-# Copyright (c) 2016-2018 Splunk Inc.
+# Copyright (c) 2016-2022 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +21,12 @@ NITRO_JSON_MAX_CONTAINERS = "max_containers"
 NITRO_JSON_FIRST_MAX_CONTAINERS = "first_run_max_events"
 NITRO_JSON_FILTERS = "filters"
 NITRO_JSON_QUERY_TIMEOUT = "query_timeout"
+NITRO_TEST_CONNECTIVITY_FAILED = "Test Connectivity failed"
+NITRO_TEST_CONNECTIVITY_PASSED = "Test connectivity Passed"
+
+ERR_CODE_UNAVAILABLE = "Error code unavailable"
+ERR_MSG_UNAVAILABLE = "Unknown error occurred. Please check the action parameters."
+
 
 NITRO_BASE_URL = "{0}/rs/esm/"
 GET_STATUS_URL = "qryGetStatus"
@@ -46,7 +51,8 @@ cef_field_list = ['startTime', 'destinationUserName', 'destinationAddress', 'des
         'destinationUserId', 'destinationHostName', 'deviceAddress']
 CREATE_CONTAINER_RESPONSE = "save_container returns, value: {0}, reason: {1}, id: {2}"
 NITRO_DEFAULT_TIMEOUT_SECS = 20
-NITRO_QUERY_TIMEOUT_ERR = "Query not completed in the configured time. Please increase the query_timeout value in the asset config and try again."
+NITRO_QUERY_TIMEOUT_ERR = "Query not completed in the configured time. Please increase the query_timeout " \
+                          "value in the asset config and try again."
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 NITRO_RESP_DATETIME_FORMAT = "%m/%d/%Y %H:%M:%S"

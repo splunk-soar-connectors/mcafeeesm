@@ -1,6 +1,5 @@
 # File: mfenitro_connector.py
-#
-# Copyright (c) 2016-2018 Splunk Inc.
+# Copyright (c) 2016-2022 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,22 +12,21 @@
 # either express or implied. See the License for the specific language governing permissions
 # and limitations under the License.
 #
-#
 # Phantom App imports
-import phantom.app as phantom
+import base64
+import json
+import re
+import sys
+import time
+from ast import literal_eval
+from copy import deepcopy
+from datetime import datetime, timedelta
 
+import phantom.app as phantom
+import pytz
+import requests
 from phantom.action_result import ActionResult
 from phantom.base_connector import BaseConnector
-
-import re
-import time
-import json
-import pytz
-import base64
-import requests
-from copy import deepcopy
-from ast import literal_eval
-from datetime import datetime, timedelta
 
 import request_fields
 from mfenitro_consts import *
@@ -104,6 +102,7 @@ class MFENitroConnector(BaseConnector):
         login_url = self._base_url + 'login'
 
         # login using the credentials
+        login_response = None
         try:
             if self._version == '9':
                 login_response = self._session.post(login_url, auth=(self._username, self._password), verify=self._verify)
@@ -123,11 +122,31 @@ class MFENitroConnector(BaseConnector):
 
         return phantom.APP_SUCCESS
 
+    def _get_error_message_from_exception(self, e):
+        """ This method is used to get appropriate error message from the exception.
+        :param e: Exception object
+        :return: error message
+        """
+
+        error_code = ERR_CODE_UNAVAILABLE
+        error_msg = ERR_MSG_UNAVAILABLE
+        try:
+            if hasattr(e, 'args'):
+                if len(e.args) > 1:
+                    error_code = e.args[0]
+                    error_msg = e.args[1]
+                elif len(e.args) == 1:
+                    error_msg = e.args[0]
+        except Exception:
+            pass
+
+        return "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+
     def _handle_error_response(self, response, result):
 
         data = response.text
 
-        if ('application/json' in response.headers.get('Content-Type')) and (data):
+        if ('application/json' in response.headers.get('Content-Type')) and data:
             data = data.replace('{', '{{').replace('}', '}}')
 
         message = "Status Code: {0}. Data: {1}".format(response.status_code, data if data else 'Not Specified')
@@ -140,7 +159,7 @@ class MFENitroConnector(BaseConnector):
 
         request_func = getattr(self._session, method)
 
-        # handle the error in case the caller specified a non-existant method
+        # handle the error in case the caller specified a non-existent method
         if not request_func:
             return action_result.set_status(phantom.APP_ERROR, "API Unsupported method: {0}".format(method)), None
 
@@ -167,7 +186,7 @@ class MFENitroConnector(BaseConnector):
 
         try:
             resp_json = result.json()
-        except Exception as e:
+        except Exception:
             if endpoint == 'sysAddWatchlistValues':
                 return phantom.APP_SUCCESS, None
             return action_result.set_status(phantom.APP_ERROR, "Error converting response to json"), None
@@ -191,7 +210,7 @@ class MFENitroConnector(BaseConnector):
         ret_val = self._create_session(action_result)
 
         if phantom.is_fail(ret_val):
-            self.save_progress("Test Connectivity failed")
+            self.save_progress(NITRO_TEST_CONNECTIVITY_FAILED)
             return self.get_status()
 
         self.save_progress("Session created, testing Query")
@@ -199,12 +218,12 @@ class MFENitroConnector(BaseConnector):
         ret_val, response = self._make_rest_call(action_result, TEST_QUERY)
 
         if phantom.is_fail(ret_val):
-            self.save_progress("Test Connectivity failed")
+            self.save_progress(NITRO_TEST_CONNECTIVITY_FAILED)
             return action_result.get_status()
 
         self.save_progress("Query done, Logging out")
 
-        self.save_progress("Test connectivity Passed")
+        self.save_progress(NITRO_TEST_CONNECTIVITY_PASSED)
 
         action_result.set_status(phantom.APP_SUCCESS)
 
@@ -212,7 +231,7 @@ class MFENitroConnector(BaseConnector):
 
     def _clean_response(self, input_dict):
 
-        if (input_dict is None):
+        if input_dict is None:
             return 'Input dict is None'
 
         string = json.dumps(input_dict)
@@ -284,7 +303,9 @@ class MFENitroConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, "Invalid query timeout value", e)
 
         if query_timeout < int(NITRO_DEFAULT_TIMEOUT_SECS):
-            return action_result.set_status(phantom.APP_ERROR, "Please specify a query timeout value greater or equal to {0}".format(NITRO_DEFAULT_TIMEOUT_SECS))
+            return action_result.set_status(phantom.APP_ERROR,
+                                            "Please specify a query timeout value greater or equal to {0}".format(
+                                                NITRO_DEFAULT_TIMEOUT_SECS))
 
         config[NITRO_JSON_QUERY_TIMEOUT] = query_timeout
 
@@ -296,7 +317,9 @@ class MFENitroConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, "Invalid Poll Time value", e)
 
         if poll_time < int(NITRO_POLL_TIME_DEFAULT):
-            return action_result.set_status(phantom.APP_ERROR, "Please specify the poll time interval value greater than {0}".format(NITRO_POLL_TIME_DEFAULT))
+            return action_result.set_status(phantom.APP_ERROR,
+                                            "Please specify the poll time interval value greater than {0}".format(
+                                                NITRO_POLL_TIME_DEFAULT))
 
         config[NITRO_JSON_POLL_TIME] = poll_time
 
@@ -309,7 +332,8 @@ class MFENitroConnector(BaseConnector):
 
         if max_containers < int(NITRO_DEFAULT_MAX_CONTAINERS):
             return action_result.set_status(phantom.APP_ERROR,
-                    "Please specify the {0} value greater than {1}. Ideally this value should be greater than the max events generated within a second on the device.".format(
+                    "Please specify the {0} value greater than {1}. "
+                    "Ideally this value should be greater than the max events generated within a second on the device.".format(
                         NITRO_JSON_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
 
         config[NITRO_JSON_MAX_CONTAINERS] = max_containers
@@ -323,7 +347,8 @@ class MFENitroConnector(BaseConnector):
 
         if first_max_containers < int(NITRO_DEFAULT_MAX_CONTAINERS):
             return action_result.set_status(phantom.APP_ERROR,
-                    "Please specify the {0} value greater than {1}. Ideally this value should be greater than the max events generated within a second on the device.".format(
+                    "Please specify the {0} value greater than {1}."
+                    " Ideally this value should be greater than the max events generated within a second on the device.".format(
                         NITRO_JSON_FIRST_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
 
         config[NITRO_JSON_FIRST_MAX_CONTAINERS] = first_max_containers
@@ -425,15 +450,17 @@ class MFENitroConnector(BaseConnector):
         try:
             action_result.set_summary({'name': details_return_value["name"]})
             action_result.update_summary({'type': details_return_value["customType"]["name"]})
-        except:
-            return action_result.set_status(phantom.APP_ERROR, "Could not update summary when getting watchlist id: {0}".format(watchlist_id))
+        except Exception:
+            return action_result.set_status(phantom.APP_ERROR,
+                                            "Could not update summary when getting watchlist id: {0}".format(watchlist_id))
 
         # Get the file id from the details just returned in order to query for the watchlist values
         try:
             values_file_id = details_return_value["valueFile"]["id"]
             values_body = {"file": {"id": values_file_id}}
-        except:
-            return action_result.set_status(phantom.APP_ERROR, "Could not get the file id from the details for watchlist id: {0}".format(watchlist_id))
+        except Exception:
+            return action_result.set_status(phantom.APP_ERROR,
+                                            "Could not get the file id from the details for watchlist id: {0}".format(watchlist_id))
 
         # The hardcoded value for 50,000 bytes read below may need to be a parameter in the action for customization
         ret_val, values_return_value = self._make_rest_call(action_result, 'sysGetWatchlistValues?pos=0&count=50000', data=values_body)
@@ -467,7 +494,7 @@ class MFENitroConnector(BaseConnector):
 
         try:
             literal_type = type(literal_eval(param["values_to_add"]))
-        except:
+        except Exception:
             literal_type = str
 
         if type(param["values_to_add"]) == list:
@@ -478,7 +505,10 @@ class MFENitroConnector(BaseConnector):
             try:
                 values_to_add = [x.strip(" '") for x in param["values_to_add"].split(',')]
             except Exception as e:
-                return action_result.set_status(phantom.APP_ERROR, "Unable to parse the 'values to add' list string Error: {0}".format(str(e)))
+                return action_result.set_status(phantom.APP_ERROR,
+                                                "Unable to parse the 'values to add' list string Error: {0}".format(
+                                                    self._get_error_message_from_exception(e)
+                                                ))
 
         w_value = param["watchlist_id"]
         if self._version == '9':
@@ -545,7 +575,7 @@ class MFENitroConnector(BaseConnector):
             try:
                 data_to_add = {k: v for k, v in zip(fields, resp_data[0]["values"])}
                 action_result.add_data(data_to_add)
-            except:
+            except Exception:
                 return action_result.set_status(phantom.APP_ERROR, "Unable to add field values to action data.")
 
         # TODO - need to finish out the function here. Add in the ability to
@@ -615,7 +645,10 @@ class MFENitroConnector(BaseConnector):
         try:
             filters = json.loads(filters)
         except Exception as e:
-            return action_result.set_status(phantom.APP_ERROR, "Unable to parse the filter json string Error: {0}".format(str(e))), None
+            return action_result.set_status(phantom.APP_ERROR,
+                                            "Unable to parse the filter json string Error: {0}".format(
+                                                self._get_error_message_from_exception(e)
+                                            )), None
 
         if type(filters) != list:
             return action_result.set_status(phantom.APP_ERROR,
@@ -628,7 +661,7 @@ class MFENitroConnector(BaseConnector):
 
         try:
             valid_filter_fields = [x['name'] for x in resp_data]
-        except Exception as e:
+        except Exception:
             return action_result.set_status(phantom.APP_ERROR, "Unable to extract allowed filter fields from response JSON"), None
 
         for i, curr_filter in enumerate(filters):
@@ -646,7 +679,8 @@ class MFENitroConnector(BaseConnector):
                 return action_result.set_status(phantom.APP_ERROR, "Filter # {0} missing 'field.name' key".format(i)), None
 
             if field_name not in valid_filter_fields:
-                return action_result.set_status(phantom.APP_ERROR, "Filter # {0} field name '{1}' cannot be filtered upon".format(i, field_name)), None
+                return action_result.set_status(phantom.APP_ERROR,
+                                                "Filter # {0} field name '{1}' cannot be filtered upon".format(i, field_name)), None
 
             values = curr_filter.get('values')
             if not values:
@@ -654,17 +688,20 @@ class MFENitroConnector(BaseConnector):
 
             if type(values) != list:
                 return action_result.set_status(phantom.APP_ERROR,
-                        "Filter # {0} 'values' key needs to be a list, even in the case of a single value, please specify a list with one item".format(i)), None
+                        "Filter # {0} 'values' key needs to be a list, "
+                        "even in the case of a single value, please specify a list with one item".format(i)), None
 
             for j, curr_value in enumerate(values):
 
                 value_type = curr_value.get('type')
                 if not value_type:
-                    return action_result.set_status(phantom.APP_ERROR, "Filter # {0}, value # {1} missing 'type' key".format(i, j)), None
+                    return action_result.set_status(phantom.APP_ERROR,
+                                                    "Filter # {0}, value # {1} missing 'type' key".format(i, j)), None
 
                 value_value = curr_value.get('value')
                 if not value_value:
-                    return action_result.set_status(phantom.APP_ERROR, "Filter # {0}, value # {1} missing 'value' key".format(i, j)), None
+                    return action_result.set_status(phantom.APP_ERROR,
+                                                    "Filter # {0}, value # {1} missing 'value' key".format(i, j)), None
 
         # the filter seems to be fine
         return phantom.APP_SUCCESS, filters
@@ -680,13 +717,14 @@ class MFENitroConnector(BaseConnector):
             req_block['config']['fields'].extend(field_list)
             req_block['config']['fields'].extend(request_fields.common_fields)
 
-            if (filter_dict):
+            if filter_dict:
                 req_block['config']['filters'] = filter_dict
 
         block_length = 50 - len(request_fields.common_fields)
 
         # first get the field blocks
-        field_blocks = [request_fields.event_fields_list[i:i + block_length] for i in xrange(0, len(request_fields.event_fields_list), block_length)]
+        field_blocks = [request_fields.event_fields_list[i:i + block_length] for i in xrange(
+            0, len(request_fields.event_fields_list), block_length)]
 
         # create request blocks from the base
         request_blocks = [deepcopy(request_fields.req_part_base) for x in field_blocks]
@@ -699,7 +737,7 @@ class MFENitroConnector(BaseConnector):
         # map(lambda x, y: x['config']['fields'].extend(y), request_blocks, field_blocks)
         map(_update_block, request_blocks, field_blocks)
 
-        return (phantom.APP_SUCCESS, request_blocks)
+        return phantom.APP_SUCCESS, request_blocks
 
     def _perform_calls(self, req_json, action_result, query_timeout):
 
@@ -789,7 +827,8 @@ class MFENitroConnector(BaseConnector):
 
             # convert what we got into ZULU, This is a bit whack, Nitro requires the string to contain T and Z
             # but the time between these 2 chars has to be in the timezone configured on the device
-            self._state[NITRO_JSON_LAST_DATE_TIME] = datetime.strptime(last_date_time, NITRO_RESP_DATETIME_FORMAT).strftime(DATETIME_FORMAT)
+            self._state[NITRO_JSON_LAST_DATE_TIME] = datetime.strptime(
+                last_date_time, NITRO_RESP_DATETIME_FORMAT).strftime(DATETIME_FORMAT)
 
             date_strings = [x["Alert.FirstTime"] for x in events]
 
@@ -819,7 +858,7 @@ class MFENitroConnector(BaseConnector):
 
         for key, v in raw_event_data.iteritems():
 
-            if (v == '0'):
+            if v == '0':
                 # A bit dangerous to ignore keys with '0' in them, however the older versions of the app
                 # would do it and no one complained, in any case the raw data is present in the container
                 # we are removing this key only from the cef dictionary, so should be fine
@@ -1082,12 +1121,14 @@ if __name__ == '__main__':
     argparser.add_argument('input_test_json', help='Input Test JSON file')
     argparser.add_argument('-u', '--username', help='username', required=False)
     argparser.add_argument('-p', '--password', help='password', required=False)
+    argparser.add_argument('-v', '--verify', action='store_true', help='verify', required=False, default=False)
 
     args = argparser.parse_args()
     session_id = None
 
     username = args.username
     password = args.password
+    verify = args.verify
 
     if username is not None and password is None:
 
@@ -1098,7 +1139,7 @@ if __name__ == '__main__':
     if username and password:
         try:
             print "Accessing the Login page"
-            r = requests.get("https://127.0.0.1/login", verify=False)
+            r = requests.get("https://127.0.0.1/login", verify=verify, timeout=NITRO_DEFAULT_TIMEOUT_SECS)
             csrftoken = r.cookies['csrftoken']
 
             data = dict()
@@ -1111,11 +1152,11 @@ if __name__ == '__main__':
             headers['Referer'] = 'https://127.0.0.1/login'
 
             print "Logging into Platform to get the session id"
-            r2 = requests.post("https://127.0.0.1/login", verify=False, data=data, headers=headers)
+            r2 = requests.post("https://127.0.0.1/login", verify=verify, data=data, headers=headers, timeout=NITRO_DEFAULT_TIMEOUT_SECS)
             session_id = r2.cookies['sessionid']
         except Exception as e:
-            print "Unable to get session id from the platfrom. Error: " + str(e)
-            exit(1)
+            print "Unable to get session id from the platform. Error: " + str(e)
+            sys.exit(1)
 
     with open(args.input_test_json) as f:
         in_json = f.read()
@@ -1132,4 +1173,4 @@ if __name__ == '__main__':
         ret_val = connector._handle_action(json.dumps(in_json), None)
         print json.dumps(json.loads(ret_val), indent=4)
 
-    exit(0)
+    sys.exit(0)
