@@ -12,6 +12,7 @@
     "product_vendor": "McAfee",
     "product_name": "McAfee ESM",
     "product_version_regex": ".*",
+    "python_version": "2.7",
     "min_phantom_version": "5.1.0",
     "logo": "logo_mcafee_esm.svg",
     "logo_dark": "logo_mcafee_dark_esm.svg",
