@@ -27,7 +27,8 @@ NITRO_TEST_CONNECTIVITY_PASSED = "Test connectivity Passed"
 ERR_CODE_UNAVAILABLE = "Error code unavailable"
 ERR_MSG_UNAVAILABLE = "Unknown error occurred. Please check the action parameters."
 
-
+NITRO_ROWS_INFO = "Getting all containers with the same date, down to the second. " \
+                  "That means the device is generating max_containers=({0}) per second. Skipping to the next second to not get stuck."
 NITRO_BASE_URL = "{0}/rs/esm/"
 NITRO_VER_2 = 'v2/'
 NITRO_QUERY_GET_FILTER_ENDPOINT = 'qryGetFilterFields'

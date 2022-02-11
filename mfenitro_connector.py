@@ -836,10 +836,7 @@ class MFENitroConnector(BaseConnector):
             date_strings = set(date_strings)
 
             if len(date_strings) == 1:
-                self.debug_print(
-                    "Getting all containers with the same date, down to the second." + " That means the device is "
-                                                                                       "generating max_containers=({0}) per second.".format(
-                        config[NITRO_JSON_MAX_CONTAINERS]) + " Skipping to the next second to not get stuck.")
+                self.debug_print(NITRO_ROWS_INFO.format(config[NITRO_JSON_MAX_CONTAINERS]))
                 self._state[NITRO_JSON_LAST_DATE_TIME] = self._get_next_start_time(self._state[NITRO_JSON_LAST_DATE_TIME])
 
         return phantom.APP_SUCCESS
@@ -938,8 +935,9 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Got more alarms than limit. Trimming number of alarms from {0} to {1}".format(len(resp_data), limit))
             resp_data = resp_data[:limit]
             if not self.is_poll_now():
-                self._state[NITRO_JSON_LAST_DATE_TIME] = (datetime.strptime(resp_data[-1]['triggeredDate'],
-                                                                            NITRO_RESP_DATETIME_FORMAT) + timedelta(seconds=1)).strftime(DATETIME_FORMAT)
+                self._state[NITRO_JSON_LAST_DATE_TIME] = (
+                        datetime.strptime(resp_data[-1]['triggeredDate'], NITRO_RESP_DATETIME_FORMAT) + timedelta(seconds=1)
+                ).strftime(DATETIME_FORMAT)
 
         containers = []
         for alarm in resp_data:
