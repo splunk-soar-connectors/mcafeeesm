@@ -29,6 +29,13 @@ ERR_MSG_UNAVAILABLE = "Unknown error occurred. Please check the action parameter
 
 
 NITRO_BASE_URL = "{0}/rs/esm/"
+NITRO_VER_2 = 'v2/'
+NITRO_QUERY_GET_FILTER_ENDPOINT = 'qryGetFilterFields'
+NITRO_UPDATE_WATCHLIST_ENDPOINT = 'sysAddWatchlistValues'
+NITRO_WATCHLIST_ENDPOINT = 'sysGetWatchlists'
+NITRO_WATCHLIST_DETAILS_ENDPOINT = 'sysGetWatchlistDetails'
+NITRO_WATCHLIST_DETAILS_LIMIT_ENDPOINT = 'sysGetWatchlistValues?pos=0&count=50000'
+NITRO_WATCHLIST_ENDPOINT_10 = '?hidden=true&dynamic=true&writeOnly=true&indexedOnly=true'
 GET_STATUS_URL = "qryGetStatus"
 GET_EVENTS_URL = "qryGetCorrEventDataForID?queryType=EVENT"
 TEST_QUERY = "qryGetSelectFields?type=EVENT&groupType=NO_GROUP"

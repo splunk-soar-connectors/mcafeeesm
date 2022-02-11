@@ -82,7 +82,7 @@ class MFENitroConnector(BaseConnector):
             self._username = config['username']
             self._password = config['password']
         else:
-            self._base_url += 'v2/'
+            self._base_url += NITRO_VER_2
             self._username = base64.b64encode(config['username'])
             self._password = base64.b64encode(config['password'])
 
@@ -105,10 +105,11 @@ class MFENitroConnector(BaseConnector):
         login_response = None
         try:
             if self._version == '9':
-                login_response = self._session.post(login_url, auth=(self._username, self._password), verify=self._verify)
+                login_response = self._session.post(login_url, auth=(self._username, self._password), verify=self._verify,
+                                                    timeout=NITRO_DEFAULT_TIMEOUT_SECS)
             elif self._version == '10':
                 body = {'username': self._username, 'password': self._password, 'locale': 'en_US'}
-                login_response = self._session.post(login_url, json=body, verify=self._verify)
+                login_response = self._session.post(login_url, json=body, verify=self._verify, timeout=NITRO_DEFAULT_TIMEOUT_SECS)
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Error creating session", e)
 
@@ -398,9 +399,9 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Failed to create the session. Cannot continue")
             return self.get_status()
 
-        endpoint = 'sysGetWatchlists'
+        endpoint = NITRO_WATCHLIST_ENDPOINT
         if self._version == '10':
-            endpoint += '?hidden=true&dynamic=true&writeOnly=true&indexedOnly=true'
+            endpoint += NITRO_WATCHLIST_ENDPOINT_10
 
         ret_val, resp_data = self._make_rest_call(action_result, endpoint)
 
@@ -442,7 +443,7 @@ class MFENitroConnector(BaseConnector):
             watchlist_id = {"value": watchlist_id}
 
         details_body = {"id": watchlist_id}
-        ret_val, details_return_value = self._make_rest_call(action_result, 'sysGetWatchlistDetails', data=details_body)
+        ret_val, details_return_value = self._make_rest_call(action_result, NITRO_WATCHLIST_DETAILS_ENDPOINT, data=details_body)
 
         if phantom.is_fail(ret_val):
             return ret_val
@@ -463,7 +464,7 @@ class MFENitroConnector(BaseConnector):
                                             "Could not get the file id from the details for watchlist id: {0}".format(watchlist_id))
 
         # The hardcoded value for 50,000 bytes read below may need to be a parameter in the action for customization
-        ret_val, values_return_value = self._make_rest_call(action_result, 'sysGetWatchlistValues?pos=0&count=50000', data=values_body)
+        ret_val, values_return_value = self._make_rest_call(action_result, NITRO_WATCHLIST_DETAILS_LIMIT_ENDPOINT, data=values_body)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status(), None
@@ -515,7 +516,7 @@ class MFENitroConnector(BaseConnector):
             w_value = {'value': w_value}
 
         body = {"watchlist": w_value, "values": values_to_add}
-        ret_val, resp_data = self._make_rest_call(action_result, 'sysAddWatchlistValues', data=body)
+        ret_val, resp_data = self._make_rest_call(action_result, NITRO_UPDATE_WATCHLIST_ENDPOINT, data=body)
 
         if phantom.is_fail(ret_val):
             return action_result.set_status(phantom.APP_ERROR, "Could not update watchlist for id: {0}".format(param["watchlist_id"]))
@@ -654,7 +655,7 @@ class MFENitroConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR,
                     "Filters need to be a list, even in the case of a single filter, please specify a list with one item")
 
-        ret_val, resp_data = self._make_rest_call(action_result, 'qryGetFilterFields')
+        ret_val, resp_data = self._make_rest_call(action_result, NITRO_QUERY_GET_FILTER_ENDPOINT)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status(), None
@@ -835,9 +836,10 @@ class MFENitroConnector(BaseConnector):
             date_strings = set(date_strings)
 
             if len(date_strings) == 1:
-                self.debug_print("Getting all containers with the same date, down to the second." +
-                        " That means the device is generating max_containers=({0}) per second.".format(config[NITRO_JSON_MAX_CONTAINERS]) +
-                        " Skipping to the next second to not get stuck.")
+                self.debug_print(
+                    "Getting all containers with the same date, down to the second." + " That means the device is "
+                                                                                       "generating max_containers=({0}) per second.".format(
+                        config[NITRO_JSON_MAX_CONTAINERS]) + " Skipping to the next second to not get stuck.")
                 self._state[NITRO_JSON_LAST_DATE_TIME] = self._get_next_start_time(self._state[NITRO_JSON_LAST_DATE_TIME])
 
         return phantom.APP_SUCCESS
@@ -936,8 +938,8 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Got more alarms than limit. Trimming number of alarms from {0} to {1}".format(len(resp_data), limit))
             resp_data = resp_data[:limit]
             if not self.is_poll_now():
-                self._state[NITRO_JSON_LAST_DATE_TIME] = (datetime.strptime(resp_data[-1]['triggeredDate'], NITRO_RESP_DATETIME_FORMAT) +
-                        timedelta(seconds=1)).strftime(DATETIME_FORMAT)
+                self._state[NITRO_JSON_LAST_DATE_TIME] = (datetime.strptime(resp_data[-1]['triggeredDate'],
+                                                                            NITRO_RESP_DATETIME_FORMAT) + timedelta(seconds=1)).strftime(DATETIME_FORMAT)
 
         containers = []
         for alarm in resp_data:
@@ -1050,9 +1052,12 @@ class MFENitroConnector(BaseConnector):
             if i == 0:
                 result_rows = [dict() for x in range(0, no_of_events)]
 
-            # The app makes multiple queries to the device, each time asking for a list of fields for max number of events that occured between a time range
-            # What that means is that in the Nth iteration where N > 0 we might get more events, than when N == 0.
-            # This means there was a new event generated in the same time range that we are querying, since we are sorting it ASCENDING it will be at the end
+            # The app makes multiple queries to the device, each time asking for a list of fields for max number of
+            # events that occured between a time range
+            # What that means is that in the Nth iteration where N > 0 we might
+            # get more events, than when N == 0.
+            # This means there was a new event generated in the same time range
+            # that we are querying, since we are sorting it ASCENDING it will be at the end
             # and should be dropped.
             if len(rows) > len(result_rows):
                 self.debug_print("Need to trim the rows")
@@ -1138,7 +1143,7 @@ if __name__ == '__main__':
 
     if username and password:
         try:
-            print "Accessing the Login page"
+            print("Accessing the Login page")
             r = requests.get("https://127.0.0.1/login", verify=verify, timeout=NITRO_DEFAULT_TIMEOUT_SECS)
             csrftoken = r.cookies['csrftoken']
 
@@ -1151,17 +1156,17 @@ if __name__ == '__main__':
             headers['Cookie'] = 'csrftoken=' + csrftoken
             headers['Referer'] = 'https://127.0.0.1/login'
 
-            print "Logging into Platform to get the session id"
+            print("Logging into Platform to get the session id")
             r2 = requests.post("https://127.0.0.1/login", verify=verify, data=data, headers=headers, timeout=NITRO_DEFAULT_TIMEOUT_SECS)
             session_id = r2.cookies['sessionid']
         except Exception as e:
-            print "Unable to get session id from the platform. Error: " + str(e)
+            print("Unable to get session id from the platform. Error: " + str(e))
             sys.exit(1)
 
     with open(args.input_test_json) as f:
         in_json = f.read()
         in_json = json.loads(in_json)
-        print json.dumps(in_json, indent=4)
+        print(json.dumps(in_json, indent=4))
 
         connector = MFENitroConnector()
         connector.print_progress_message = True
@@ -1171,6 +1176,6 @@ if __name__ == '__main__':
             connector._set_csrf_info(csrftoken, headers['Referer'])
 
         ret_val = connector._handle_action(json.dumps(in_json), None)
-        print json.dumps(json.loads(ret_val), indent=4)
+        print(json.dumps(json.loads(ret_val), indent=4))
 
     sys.exit(0)
