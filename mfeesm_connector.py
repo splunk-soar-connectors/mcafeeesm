@@ -1,4 +1,4 @@
-# File: mfenitro_connector.py
+# File: mfeesm_connector.py
 # Copyright (c) 2016-2022 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@ from phantom.action_result import ActionResult
 from phantom.base_connector import BaseConnector
 
 import request_fields
-from mfenitro_consts import *
+from mfeesm_consts import *
 
 _container_common = {
     "description": "Container added by Phantom McAfee ESM App",
@@ -44,7 +44,7 @@ _artifact_common = {
 }
 
 
-class MFENitroConnector(BaseConnector):
+class MFEEsmConnector(BaseConnector):
 
     ACTION_ID_TEST_CONNECTIVITY = "test_asset_connectivity"
     ACTION_ID_UPDATE_WATCHLIST = "update_watchlist"
@@ -56,7 +56,7 @@ class MFENitroConnector(BaseConnector):
 
     def __init__(self):
 
-        super(MFENitroConnector, self).__init__()
+        super(MFEEsmConnector, self).__init__()
 
         self._state = None
         self._verify = None
@@ -76,13 +76,13 @@ class MFENitroConnector(BaseConnector):
         self._ingest_type = config.get('ingest_data', 'Events')
         self._version = config.get('version', '9')
         self._verify = config['verify_server_cert']
-        self._base_url = NITRO_BASE_URL.format(config["base_url"].strip('/'))
+        self._base_url = ESM_BASE_URL.format(config["base_url"].strip('/'))
 
         if self._version == '9':
             self._username = config['username']
             self._password = config['password']
         else:
-            self._base_url += NITRO_VER_2
+            self._base_url += ESM_VER_2
             self._username = base64.b64encode(config['username'])
             self._password = base64.b64encode(config['password'])
 
@@ -106,10 +106,10 @@ class MFENitroConnector(BaseConnector):
         try:
             if self._version == '9':
                 login_response = self._session.post(login_url, auth=(self._username, self._password), verify=self._verify,
-                                                    timeout=NITRO_DEFAULT_TIMEOUT_SECS)
+                                                    timeout=ESM_DEFAULT_TIMEOUT_SECS)
             elif self._version == '10':
                 body = {'username': self._username, 'password': self._password, 'locale': 'en_US'}
-                login_response = self._session.post(login_url, json=body, verify=self._verify, timeout=NITRO_DEFAULT_TIMEOUT_SECS)
+                login_response = self._session.post(login_url, json=body, verify=self._verify, timeout=ESM_DEFAULT_TIMEOUT_SECS)
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Error creating session", e)
 
@@ -211,7 +211,7 @@ class MFENitroConnector(BaseConnector):
         ret_val = self._create_session(action_result)
 
         if phantom.is_fail(ret_val):
-            self.save_progress(NITRO_TEST_CONNECTIVITY_FAILED)
+            self.save_progress(ESM_TEST_CONNECTIVITY_FAILED)
             return self.get_status()
 
         self.save_progress("Session created, testing Query")
@@ -219,12 +219,12 @@ class MFENitroConnector(BaseConnector):
         ret_val, response = self._make_rest_call(action_result, TEST_QUERY)
 
         if phantom.is_fail(ret_val):
-            self.save_progress(NITRO_TEST_CONNECTIVITY_FAILED)
+            self.save_progress(ESM_TEST_CONNECTIVITY_FAILED)
             return action_result.get_status()
 
         self.save_progress("Query done, Logging out")
 
-        self.save_progress(NITRO_TEST_CONNECTIVITY_PASSED)
+        self.save_progress(ESM_TEST_CONNECTIVITY_PASSED)
 
         action_result.set_status(phantom.APP_SUCCESS)
 
@@ -242,7 +242,7 @@ class MFENitroConnector(BaseConnector):
     def _get_next_start_time(self, last_time):
 
         config = self.get_config()
-        device_tz_sting = config[NITRO_JSON_TIMEZONE]
+        device_tz_sting = config[ESM_JSON_TIMEZONE]
         to_tz = pytz.timezone(device_tz_sting)
 
         # get the time string passed into a datetime object
@@ -260,10 +260,10 @@ class MFENitroConnector(BaseConnector):
         config = self.get_config()
 
         # Get the poll time in minutes
-        poll_time = config.get(NITRO_JSON_POLL_TIME, NITRO_POLL_TIME_DEFAULT)
+        poll_time = config.get(ESM_JSON_POLL_TIME, ESM_POLL_TIME_DEFAULT)
 
         # get the device timezone
-        device_tz_sting = config[NITRO_JSON_TIMEZONE]
+        device_tz_sting = config[ESM_JSON_TIMEZONE]
         to_tz = pytz.timezone(device_tz_sting)
 
         # get the start time to use, i.e. current - poll minutes in UTC
@@ -280,7 +280,7 @@ class MFENitroConnector(BaseConnector):
         config = self.get_config()
 
         # get the timezone of the device
-        device_tz_sting = config[NITRO_JSON_TIMEZONE]
+        device_tz_sting = config[ESM_JSON_TIMEZONE]
         to_tz = pytz.timezone(device_tz_sting)
 
         # get the current time
@@ -296,63 +296,63 @@ class MFENitroConnector(BaseConnector):
         config = self.get_config()
 
         # validate the query timeout
-        query_timeout = config.get(NITRO_JSON_QUERY_TIMEOUT, int(NITRO_DEFAULT_TIMEOUT_SECS))
+        query_timeout = config.get(ESM_JSON_QUERY_TIMEOUT, int(ESM_DEFAULT_TIMEOUT_SECS))
 
         try:
             query_timeout = int(query_timeout)
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Invalid query timeout value", e)
 
-        if query_timeout < int(NITRO_DEFAULT_TIMEOUT_SECS):
+        if query_timeout < int(ESM_DEFAULT_TIMEOUT_SECS):
             return action_result.set_status(phantom.APP_ERROR,
                                             "Please specify a query timeout value greater or equal to {0}".format(
-                                                NITRO_DEFAULT_TIMEOUT_SECS))
+                                                ESM_DEFAULT_TIMEOUT_SECS))
 
-        config[NITRO_JSON_QUERY_TIMEOUT] = query_timeout
+        config[ESM_JSON_QUERY_TIMEOUT] = query_timeout
 
-        poll_time = config.get(NITRO_JSON_POLL_TIME, int(NITRO_POLL_TIME_DEFAULT))
+        poll_time = config.get(ESM_JSON_POLL_TIME, int(ESM_POLL_TIME_DEFAULT))
 
         try:
             poll_time = int(poll_time)
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Invalid Poll Time value", e)
 
-        if poll_time < int(NITRO_POLL_TIME_DEFAULT):
+        if poll_time < int(ESM_POLL_TIME_DEFAULT):
             return action_result.set_status(phantom.APP_ERROR,
                                             "Please specify the poll time interval value greater than {0}".format(
-                                                NITRO_POLL_TIME_DEFAULT))
+                                                ESM_POLL_TIME_DEFAULT))
 
-        config[NITRO_JSON_POLL_TIME] = poll_time
+        config[ESM_JSON_POLL_TIME] = poll_time
 
-        max_containers = config.get(NITRO_JSON_MAX_CONTAINERS, int(NITRO_DEFAULT_MAX_CONTAINERS))
+        max_containers = config.get(ESM_JSON_MAX_CONTAINERS, int(ESM_DEFAULT_MAX_CONTAINERS))
 
         try:
             max_containers = int(max_containers)
         except Exception as e:
-            return action_result.set_status(phantom.APP_ERROR, "Invalid {0} value".format(NITRO_JSON_MAX_CONTAINERS), e)
+            return action_result.set_status(phantom.APP_ERROR, "Invalid {0} value".format(ESM_JSON_MAX_CONTAINERS), e)
 
-        if max_containers < int(NITRO_DEFAULT_MAX_CONTAINERS):
+        if max_containers < int(ESM_DEFAULT_MAX_CONTAINERS):
             return action_result.set_status(phantom.APP_ERROR,
                     "Please specify the {0} value greater than {1}. "
                     "Ideally this value should be greater than the max events generated within a second on the device.".format(
-                        NITRO_JSON_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
+                        ESM_JSON_MAX_CONTAINERS, ESM_DEFAULT_MAX_CONTAINERS))
 
-        config[NITRO_JSON_MAX_CONTAINERS] = max_containers
+        config[ESM_JSON_MAX_CONTAINERS] = max_containers
 
-        first_max_containers = config.get(NITRO_JSON_FIRST_MAX_CONTAINERS, int(NITRO_DEFAULT_MAX_CONTAINERS))
+        first_max_containers = config.get(ESM_JSON_FIRST_MAX_CONTAINERS, int(ESM_DEFAULT_MAX_CONTAINERS))
 
         try:
             first_max_containers = int(first_max_containers)
         except Exception as e:
-            return action_result.set_status(phantom.APP_ERROR, "Invalid {0} value".format(NITRO_JSON_FIRST_MAX_CONTAINERS), e)
+            return action_result.set_status(phantom.APP_ERROR, "Invalid {0} value".format(ESM_JSON_FIRST_MAX_CONTAINERS), e)
 
-        if first_max_containers < int(NITRO_DEFAULT_MAX_CONTAINERS):
+        if first_max_containers < int(ESM_DEFAULT_MAX_CONTAINERS):
             return action_result.set_status(phantom.APP_ERROR,
                     "Please specify the {0} value greater than {1}."
                     " Ideally this value should be greater than the max events generated within a second on the device.".format(
-                        NITRO_JSON_FIRST_MAX_CONTAINERS, NITRO_DEFAULT_MAX_CONTAINERS))
+                        ESM_JSON_FIRST_MAX_CONTAINERS, ESM_DEFAULT_MAX_CONTAINERS))
 
-        config[NITRO_JSON_FIRST_MAX_CONTAINERS] = first_max_containers
+        config[ESM_JSON_FIRST_MAX_CONTAINERS] = first_max_containers
 
         return phantom.APP_SUCCESS
 
@@ -399,9 +399,9 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Failed to create the session. Cannot continue")
             return self.get_status()
 
-        endpoint = NITRO_WATCHLIST_ENDPOINT
+        endpoint = ESM_WATCHLIST_ENDPOINT
         if self._version == '10':
-            endpoint += NITRO_WATCHLIST_ENDPOINT_10
+            endpoint += ESM_WATCHLIST_ENDPOINT_10
 
         ret_val, resp_data = self._make_rest_call(action_result, endpoint)
 
@@ -443,7 +443,7 @@ class MFENitroConnector(BaseConnector):
             watchlist_id = {"value": watchlist_id}
 
         details_body = {"id": watchlist_id}
-        ret_val, details_return_value = self._make_rest_call(action_result, NITRO_WATCHLIST_DETAILS_ENDPOINT, data=details_body)
+        ret_val, details_return_value = self._make_rest_call(action_result, ESM_WATCHLIST_DETAILS_ENDPOINT, data=details_body)
 
         if phantom.is_fail(ret_val):
             return ret_val
@@ -464,7 +464,7 @@ class MFENitroConnector(BaseConnector):
                                             "Could not get the file id from the details for watchlist id: {0}".format(watchlist_id))
 
         # The hardcoded value for 50,000 bytes read below may need to be a parameter in the action for customization
-        ret_val, values_return_value = self._make_rest_call(action_result, NITRO_WATCHLIST_DETAILS_LIMIT_ENDPOINT, data=values_body)
+        ret_val, values_return_value = self._make_rest_call(action_result, ESM_WATCHLIST_DETAILS_LIMIT_ENDPOINT, data=values_body)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status(), None
@@ -516,7 +516,7 @@ class MFENitroConnector(BaseConnector):
             w_value = {'value': w_value}
 
         body = {"watchlist": w_value, "values": values_to_add}
-        ret_val, resp_data = self._make_rest_call(action_result, NITRO_UPDATE_WATCHLIST_ENDPOINT, data=body)
+        ret_val, resp_data = self._make_rest_call(action_result, ESM_UPDATE_WATCHLIST_ENDPOINT, data=body)
 
         if phantom.is_fail(ret_val):
             return action_result.set_status(phantom.APP_ERROR, "Could not update watchlist for id: {0}".format(param["watchlist_id"]))
@@ -591,7 +591,7 @@ class MFENitroConnector(BaseConnector):
         config = self.get_config()
         limit = config["max_containers"]
         query_params = dict()
-        last_time = self._state.get(NITRO_JSON_LAST_DATE_TIME)
+        last_time = self._state.get(ESM_JSON_LAST_DATE_TIME)
 
         if self.is_poll_now():
             limit = param.get("container_count", 100)
@@ -609,7 +609,7 @@ class MFENitroConnector(BaseConnector):
         query_params["customEnd"] = self._get_end_time()
 
         if not self.is_poll_now():
-            self._state[NITRO_JSON_LAST_DATE_TIME] = query_params["customEnd"]
+            self._state[ESM_JSON_LAST_DATE_TIME] = query_params["customEnd"]
 
         return query_params
 
@@ -617,7 +617,7 @@ class MFENitroConnector(BaseConnector):
 
         config = self.get_config()
 
-        filters = config.get(NITRO_JSON_FILTERS)
+        filters = config.get(ESM_JSON_FILTERS)
 
         if not filters:
 
@@ -655,7 +655,7 @@ class MFENitroConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR,
                     "Filters need to be a list, even in the case of a single filter, please specify a list with one item")
 
-        ret_val, resp_data = self._make_rest_call(action_result, NITRO_QUERY_GET_FILTER_ENDPOINT)
+        ret_val, resp_data = self._make_rest_call(action_result, ESM_QUERY_GET_FILTER_ENDPOINT)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status(), None
@@ -805,7 +805,7 @@ class MFENitroConnector(BaseConnector):
                 return phantom.APP_SUCCESS, True, "Query finished"
 
         self.debug_print("Query in-complete")
-        return phantom.APP_SUCCESS, False, NITRO_QUERY_TIMEOUT_ERR
+        return phantom.APP_SUCCESS, False, ESM_QUERY_TIMEOUT_ERR
 
     def _handle_result_rows(self, events):
 
@@ -826,24 +826,24 @@ class MFENitroConnector(BaseConnector):
 
             last_date_time = events[-1]["Alert.FirstTime"]
 
-            # convert what we got into ZULU, This is a bit whack, Nitro requires the string to contain T and Z
+            # convert what we got into ZULU, This is a bit whack, ESM requires the string to contain T and Z
             # but the time between these 2 chars has to be in the timezone configured on the device
-            self._state[NITRO_JSON_LAST_DATE_TIME] = datetime.strptime(
-                last_date_time, NITRO_RESP_DATETIME_FORMAT).strftime(DATETIME_FORMAT)
+            self._state[ESM_JSON_LAST_DATE_TIME] = datetime.strptime(
+                last_date_time, ESM_RESP_DATETIME_FORMAT).strftime(DATETIME_FORMAT)
 
             date_strings = [x["Alert.FirstTime"] for x in events]
 
             date_strings = set(date_strings)
 
             if len(date_strings) == 1:
-                self.debug_print(NITRO_ROWS_INFO.format(config[NITRO_JSON_MAX_CONTAINERS]))
-                self._state[NITRO_JSON_LAST_DATE_TIME] = self._get_next_start_time(self._state[NITRO_JSON_LAST_DATE_TIME])
+                self.debug_print(ESM_ROWS_INFO.format(config[ESM_JSON_MAX_CONTAINERS]))
+                self._state[ESM_JSON_LAST_DATE_TIME] = self._get_next_start_time(self._state[ESM_JSON_LAST_DATE_TIME])
 
         return phantom.APP_SUCCESS
 
     def _frame_cef_keys(self, key):
 
-        # changing the nitro keys to camel case to match cef formatting
+        # changing the ESM keys to camel case to match cef formatting
         name = re.sub('[^A-Za-z0-9]+', '', key)
         name = name[0].lower() + name[1:]
         if name in CEF_MAP.keys():
@@ -906,7 +906,7 @@ class MFENitroConnector(BaseConnector):
         artifact['container_id'] = container_id
         artifact['source_data_identifier'] = 0  # We are only going to add a single artifact
         artifact['cef'] = cef_dict
-        artifact['cef_types'] = NITRO_CEF_CONTAINS
+        artifact['cef_types'] = ESM_CEF_CONTAINS
         artifact['name'] = "Event Artifact"
         artifact['run_automation'] = True
         ret_val, status_string, artifact_id = self.save_artifact(artifact)
@@ -935,8 +935,8 @@ class MFENitroConnector(BaseConnector):
             self.save_progress("Got more alarms than limit. Trimming number of alarms from {0} to {1}".format(len(resp_data), limit))
             resp_data = resp_data[:limit]
             if not self.is_poll_now():
-                self._state[NITRO_JSON_LAST_DATE_TIME] = (
-                        datetime.strptime(resp_data[-1]['triggeredDate'], NITRO_RESP_DATETIME_FORMAT) + timedelta(seconds=1)
+                self._state[ESM_JSON_LAST_DATE_TIME] = (
+                        datetime.strptime(resp_data[-1]['triggeredDate'], ESM_RESP_DATETIME_FORMAT) + timedelta(seconds=1)
                 ).strftime(DATETIME_FORMAT)
 
         containers = []
@@ -1013,7 +1013,7 @@ class MFENitroConnector(BaseConnector):
                 query_params.get('customEnd', '-').replace('T', ' ').replace('Z', ''))
         self.save_progress(message)
 
-        query_timeout = config[NITRO_JSON_QUERY_TIMEOUT]
+        query_timeout = config[ESM_JSON_QUERY_TIMEOUT]
 
         total_parts = len(request_blocks)
 
@@ -1142,7 +1142,7 @@ if __name__ == '__main__':
     if username and password:
         try:
             print("Accessing the Login page")
-            r = requests.get("https://127.0.0.1/login", verify=verify, timeout=NITRO_DEFAULT_TIMEOUT_SECS)
+            r = requests.get("https://127.0.0.1/login", verify=verify, timeout=ESM_DEFAULT_TIMEOUT_SECS)
             csrftoken = r.cookies['csrftoken']
 
             data = dict()
@@ -1155,7 +1155,7 @@ if __name__ == '__main__':
             headers['Referer'] = 'https://127.0.0.1/login'
 
             print("Logging into Platform to get the session id")
-            r2 = requests.post("https://127.0.0.1/login", verify=verify, data=data, headers=headers, timeout=NITRO_DEFAULT_TIMEOUT_SECS)
+            r2 = requests.post("https://127.0.0.1/login", verify=verify, data=data, headers=headers, timeout=ESM_DEFAULT_TIMEOUT_SECS)
             session_id = r2.cookies['sessionid']
         except Exception as e:
             print("Unable to get session id from the platform. Error: " + str(e))
@@ -1166,7 +1166,7 @@ if __name__ == '__main__':
         in_json = json.loads(in_json)
         print(json.dumps(in_json, indent=4))
 
-        connector = MFENitroConnector()
+        connector = MFEEsmConnector()
         connector.print_progress_message = True
 
         if session_id is not None:
