@@ -28,7 +28,7 @@ import requests
 from phantom.action_result import ActionResult
 from phantom.base_connector import BaseConnector
 
-import request_fields
+import mfeesm_request_fields
 from mfeesm_consts import *
 
 _container_common = {
@@ -716,19 +716,19 @@ class MFEEsmConnector(BaseConnector):
         def _update_block(req_block, field_list):
             req_block['config'].update(query_dict)
             req_block['config']['fields'].extend(field_list)
-            req_block['config']['fields'].extend(request_fields.common_fields)
+            req_block['config']['fields'].extend(mfeesm_request_fields.common_fields)
 
             if filter_dict:
                 req_block['config']['filters'] = filter_dict
 
-        block_length = 50 - len(request_fields.common_fields)
+        block_length = 50 - len(mfeesm_request_fields.common_fields)
 
         # first get the field blocks
-        field_blocks = [request_fields.event_fields_list[i:i + block_length] for i in xrange(
-            0, len(request_fields.event_fields_list), block_length)]
+        field_blocks = [mfeesm_request_fields.event_fields_list[i:i + block_length] for i in xrange(
+            0, len(mfeesm_request_fields.event_fields_list), block_length)]
 
         # create request blocks from the base
-        request_blocks = [deepcopy(request_fields.req_part_base) for x in field_blocks]
+        request_blocks = [deepcopy(mfeesm_request_fields.req_part_base) for x in field_blocks]
 
         # request_blocks = [x['config']['fields'] = y for x in request_blocks, y in fields_blocks]
         # Add the query_dict to the blocks
