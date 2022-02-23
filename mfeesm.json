@@ -3,19 +3,20 @@
     "deprecated_appid": "161ce6ea-c214-48e9-8bd9-56b73dffa7da",
     "name": "McAfee ESM",
     "description": "This app integrates with an instance of McAfee ESM to perform investigative and ingestion actions",
-    "publisher": "Phantom",
+    "publisher": "Splunk Community",
     "type": "siem",
-    "main_module": "mfenitro_connector.pyc",
-    "app_version": "2.0.7",
+    "main_module": "mfeesm_connector.py",
+    "app_version": "3.0.0",
     "utctime_updated": "2022-01-07T21:41:16.000000Z",
     "package_name": "phantom_mfeesm",
     "product_vendor": "McAfee",
     "product_name": "McAfee ESM",
     "product_version_regex": ".*",
-    "min_phantom_version": "3.5.210",
+    "python_version": "2.7",
+    "min_phantom_version": "5.1.0",
     "logo": "logo_mcafee_esm.svg",
     "logo_dark": "logo_mcafee_dark_esm.svg",
-    "license": "Copyright (c) 2016-2018 Splunk Inc.",
+    "license": "Copyright (c) 2016-2022 Splunk Inc.",
     "configuration": {
         "base_url": {
             "data_type": "string",
@@ -50,8 +51,7 @@
                 "9",
                 "10"
             ],
-            "default": "9",
-            "required": false
+            "default": "9"
         },
         "ingest_data": {
             "data_type": "string",
@@ -66,8 +66,7 @@
         "filters": {
             "data_type": "string",
             "description": "List of filters (JSON)",
-            "order": 6,
-            "required": false
+            "order": 6
         },
         "max_containers": {
             "data_type": "numeric",
@@ -87,15 +86,13 @@
             "data_type": "numeric",
             "order": 9,
             "description": "Ingest objects in last N minutes (POLL NOW and First Run)",
-            "default": 2,
-            "required": false
+            "default": 2
         },
         "query_timeout": {
             "data_type": "numeric",
             "order": 10,
             "description": "Max Time to wait for query to finish (seconds)",
-            "default": 20,
-            "required": false
+            "default": 20
         },
         "timezone": {
             "data_type": "timezone",
@@ -130,6 +127,14 @@
             },
             "output": [
                 {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
+                },
+                {
                     "data_path": "action_result.data.*.name",
                     "data_type": "string",
                     "column_name": "Field Name",
@@ -142,16 +147,12 @@
                     "column_order": 1
                 },
                 {
-                    "data_path": "action_result.status",
-                    "data_type": "string"
+                    "data_path": "action_result.summary.total_fields",
+                    "data_type": "numeric"
                 },
                 {
                     "data_path": "action_result.message",
                     "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.summary.total_fields",
-                    "data_type": "numeric"
                 },
                 {
                     "data_path": "summary.total_objects",
@@ -173,19 +174,23 @@
             "parameters": {
                 "start_time": {
                     "data_type": "numeric",
-                    "description": "Start of time range, in epoch time (milliseconds)"
+                    "description": "Start of time range, in epoch time (milliseconds)",
+                    "order": 0
                 },
                 "end_time": {
                     "data_type": "numeric",
-                    "description": "End of time range, in epoch time (milliseconds)"
+                    "description": "End of time range, in epoch time (milliseconds)",
+                    "order": 1
                 },
                 "container_count": {
                     "data_type": "numeric",
-                    "description": "Maximum number of container records to query for"
+                    "description": "Maximum number of container records to query for",
+                    "order": 2
                 },
                 "artifact_count": {
                     "data_type": "numeric",
-                    "description": "Maximum number of artifact records to query for"
+                    "description": "Maximum number of artifact records to query for",
+                    "order": 3
                 }
             },
             "output": [],
@@ -206,16 +211,30 @@
             },
             "output": [
                 {
-                    "data_path": "action_result.data.*.name",
+                    "data_path": "action_result.status",
                     "data_type": "string",
-                    "column_name": "Watchlist Name",
-                    "column_order": 0
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.active",
+                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.data.*.customType.name",
                     "data_type": "string",
                     "column_name": "Watchlist Type",
                     "column_order": 1
+                },
+                {
+                    "data_path": "action_result.data.*.dynamic",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.errorMsg",
+                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.data.*.id.value",
@@ -227,21 +246,13 @@
                     "column_order": 3
                 },
                 {
-                    "data_path": "action_result.data.*.valueCount",
-                    "data_type": "numeric",
-                    "column_name": "Number of Entries",
-                    "column_order": 2
+                    "data_path": "action_result.data.*.name",
+                    "data_type": "string",
+                    "column_name": "Watchlist Name",
+                    "column_order": 0
                 },
                 {
                     "data_path": "action_result.data.*.scored",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.data.*.errorMsg",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.data.*.dynamic",
                     "data_type": "string"
                 },
                 {
@@ -249,24 +260,22 @@
                     "data_type": "string"
                 },
                 {
-                    "data_path": "action_result.data.*.active",
-                    "data_type": "string"
-                },
-                {
                     "data_path": "action_result.data.*.type.name",
                     "data_type": "string"
                 },
                 {
-                    "data_path": "action_result.status",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.message",
-                    "data_type": "string"
+                    "data_path": "action_result.data.*.valueCount",
+                    "data_type": "numeric",
+                    "column_name": "Number Of Entries",
+                    "column_order": 2
                 },
                 {
                     "data_path": "action_result.summary.total_fields",
                     "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
                 },
                 {
                     "data_path": "summary.total_objects",
@@ -290,7 +299,7 @@
                     "data_type": "numeric",
                     "order": 0,
                     "description": "Event ID in the McAfee ESM",
-                    "verbose": "Usually a simple integer",
+                    "verbose": "Usually a simple integer.",
                     "contains": [
                         "esm event id"
                     ],
@@ -300,8 +309,7 @@
                 "field_list": {
                     "data_type": "string",
                     "order": 1,
-                    "description": "Comma separated list of event fields to get",
-                    "required": false
+                    "description": "Comma separated list of event fields to get"
                 }
             },
             "render": {
@@ -313,11 +321,11 @@
             "output": [
                 {
                     "data_path": "action_result.status",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.parameter.field_list",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
                 },
                 {
                     "data_path": "action_result.parameter.event_id",
@@ -327,22 +335,14 @@
                     ]
                 },
                 {
-                    "data_path": "action_result.data.*.Rule_msg",
-                    "data_type": "string",
-                    "column_name": "Rule Message",
-                    "column_order": 0
+                    "data_path": "action_result.parameter.field_list",
+                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.data.*.DSIDSigID",
                     "data_type": "string",
                     "column_name": "Signature ID",
                     "column_order": 1
-                },
-                {
-                    "data_path": "action_result.data.*.SrcIP",
-                    "data_type": "string",
-                    "column_name": "Source IP",
-                    "column_order": 2
                 },
                 {
                     "data_path": "action_result.data.*.DstIP",
@@ -357,12 +357,24 @@
                     "column_order": 4
                 },
                 {
-                    "data_path": "action_result.message",
-                    "data_type": "string"
+                    "data_path": "action_result.data.*.Rule_msg",
+                    "data_type": "string",
+                    "column_name": "Rule Message",
+                    "column_order": 0
+                },
+                {
+                    "data_path": "action_result.data.*.SrcIP",
+                    "data_type": "string",
+                    "column_name": "Source IP",
+                    "column_order": 2
                 },
                 {
                     "data_path": "action_result.summary.total_values",
                     "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
                 },
                 {
                     "data_path": "summary.total_objects",
@@ -386,7 +398,7 @@
                     "data_type": "numeric",
                     "order": 0,
                     "description": "Watchlist ID in the McAfee ESM",
-                    "verbose": "Usually a simple integer",
+                    "verbose": "Usually a simple integer.",
                     "contains": [
                         "esm watchlist id"
                     ],
@@ -402,23 +414,19 @@
             },
             "output": [
                 {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
+                },
+                {
                     "data_path": "action_result.parameter.watchlist_id",
                     "data_type": "string",
                     "contains": [
                         "esm watchlist id"
                     ]
-                },
-                {
-                    "data_path": "action_result.summary.name",
-                    "data_type": "string",
-                    "column_name": "Watchlist Name",
-                    "column_order": 0
-                },
-                {
-                    "data_path": "action_result.summary.type",
-                    "data_type": "string",
-                    "column_name": "Watchlist Type",
-                    "column_order": 1
                 },
                 {
                     "data_path": "action_result.data.*.values",
@@ -427,16 +435,24 @@
                     "column_order": 2
                 },
                 {
-                    "data_path": "action_result.status",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.message",
-                    "data_type": "string"
+                    "data_path": "action_result.summary.name",
+                    "data_type": "string",
+                    "column_name": "Watchlist Name",
+                    "column_order": 0
                 },
                 {
                     "data_path": "action_result.summary.total_values",
                     "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.type",
+                    "data_type": "string",
+                    "column_name": "Watchlist Type",
+                    "column_order": 1
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
                 },
                 {
                     "data_path": "summary.total_objects",
@@ -460,7 +476,7 @@
                     "data_type": "numeric",
                     "order": 0,
                     "description": "Watchlist ID in the McAfee ESM",
-                    "verbose": "Usually a simple integer",
+                    "verbose": "Usually a simple integer.",
                     "contains": [
                         "esm watchlist id"
                     ],
@@ -469,9 +485,9 @@
                 },
                 "values_to_add": {
                     "data_type": "string",
-                    "order": 0,
+                    "order": 1,
                     "description": "Comma separated list of values to add to the watchlist. (e.g. '10.10.10.10, 192.168.1.4, 172.16.32.32')",
-                    "verbose": "Values must be appropriate for the type of watchlist to be updated",
+                    "verbose": "Values must be appropriate for the type of watchlist to be updated.",
                     "required": true
                 }
             },
@@ -482,6 +498,14 @@
                 "height": 5
             },
             "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
+                },
                 {
                     "data_path": "action_result.parameter.values_to_add",
                     "data_type": "string"
@@ -494,10 +518,20 @@
                     ]
                 },
                 {
+                    "data_path": "action_result.data.*.values",
+                    "data_type": "string",
+                    "column_name": "Watchlist Values",
+                    "column_order": 2
+                },
+                {
                     "data_path": "action_result.summary.name",
                     "data_type": "string",
                     "column_name": "Watchlist Name",
                     "column_order": 0
+                },
+                {
+                    "data_path": "action_result.summary.total_values",
+                    "data_type": "numeric"
                 },
                 {
                     "data_path": "action_result.summary.type",
@@ -506,22 +540,8 @@
                     "column_order": 1
                 },
                 {
-                    "data_path": "action_result.data.*.values",
-                    "data_type": "string",
-                    "column_name": "Watchlist Values",
-                    "column_order": 2
-                },
-                {
-                    "data_path": "action_result.status",
-                    "data_type": "string"
-                },
-                {
                     "data_path": "action_result.message",
                     "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.summary.total_values",
-                    "data_type": "numeric"
                 },
                 {
                     "data_path": "summary.total_objects",
