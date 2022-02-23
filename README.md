@@ -1,28 +1,28 @@
 [comment]: # "Auto-generated SOAR connector documentation"
 # McAfee ESM
 
-Publisher: Phantom  
-Connector Version: 2\.0\.6  
+Publisher: Splunk Community  
+Connector Version: 3\.0\.0  
 Product Vendor: McAfee  
 Product Name: McAfee ESM  
 Product Version Supported (regex): "\.\*"  
-Minimum Product Version: 3\.5\.210  
+Minimum Product Version: 5\.1\.0  
 
 This app integrates with an instance of McAfee ESM to perform investigative and ingestion actions
 
-[comment]: # "File: readme.md"
-[comment]: # "Copyright (c) 2016-2018 Splunk Inc."
 [comment]: # ""
+[comment]: # "File: README.md"
+[comment]: # "Copyright (c) 2016-2022 Splunk Inc."
 [comment]: # "Licensed under the Apache License, Version 2.0 (the 'License');"
 [comment]: # "you may not use this file except in compliance with the License."
 [comment]: # "You may obtain a copy of the License at"
-[comment]: # ""
-[comment]: # "    http://www.apache.org/licenses/LICENSE-2.0"
-[comment]: # ""
+[comment]: # "  http://www.apache.org/licenses/LICENSE-2.0"
 [comment]: # "Unless required by applicable law or agreed to in writing, software distributed under"
 [comment]: # "the License is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,"
 [comment]: # "either express or implied. See the License for the specific language governing permissions"
 [comment]: # "and limitations under the License."
+[comment]: # "SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part"
+[comment]: # "without a valid written license from Splunk Inc. is PROHIBITED."
 [comment]: # ""
 McAfee ESM identifies, correlates, and remediates information security threat events. The McAfee ESM
 app enables the collection of these events and the corresponding event related information into
@@ -222,11 +222,11 @@ No parameters are required for this action
 #### Action Output
 DATA PATH | TYPE | CONTAINS
 --------- | ---- | --------
+action\_result\.status | string | 
 action\_result\.data\.\*\.name | string | 
 action\_result\.data\.\*\.types | string | 
-action\_result\.status | string | 
-action\_result\.message | string | 
 action\_result\.summary\.total\_fields | numeric | 
+action\_result\.message | string | 
 summary\.total\_objects | numeric | 
 summary\.total\_objects\_successful | numeric |   
 
@@ -259,19 +259,19 @@ No parameters are required for this action
 #### Action Output
 DATA PATH | TYPE | CONTAINS
 --------- | ---- | --------
-action\_result\.data\.\*\.name | string | 
-action\_result\.data\.\*\.customType\.name | string | 
-action\_result\.data\.\*\.id\.value | numeric |  `esm watchlist id` 
-action\_result\.data\.\*\.valueCount | numeric | 
-action\_result\.data\.\*\.scored | string | 
-action\_result\.data\.\*\.errorMsg | string | 
-action\_result\.data\.\*\.dynamic | string | 
-action\_result\.data\.\*\.source | string | 
-action\_result\.data\.\*\.active | string | 
-action\_result\.data\.\*\.type\.name | string | 
 action\_result\.status | string | 
-action\_result\.message | string | 
+action\_result\.data\.\*\.active | string | 
+action\_result\.data\.\*\.customType\.name | string | 
+action\_result\.data\.\*\.dynamic | string | 
+action\_result\.data\.\*\.errorMsg | string | 
+action\_result\.data\.\*\.id\.value | numeric |  `esm watchlist id` 
+action\_result\.data\.\*\.name | string | 
+action\_result\.data\.\*\.scored | string | 
+action\_result\.data\.\*\.source | string | 
+action\_result\.data\.\*\.type\.name | string | 
+action\_result\.data\.\*\.valueCount | numeric | 
 action\_result\.summary\.total\_fields | numeric | 
+action\_result\.message | string | 
 summary\.total\_objects | numeric | 
 summary\.total\_objects\_successful | numeric |   
 
@@ -291,15 +291,15 @@ PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 DATA PATH | TYPE | CONTAINS
 --------- | ---- | --------
 action\_result\.status | string | 
-action\_result\.parameter\.field\_list | string | 
 action\_result\.parameter\.event\_id | string |  `esm event id` 
-action\_result\.data\.\*\.Rule\_msg | string | 
+action\_result\.parameter\.field\_list | string | 
 action\_result\.data\.\*\.DSIDSigID | string | 
-action\_result\.data\.\*\.SrcIP | string | 
 action\_result\.data\.\*\.DstIP | string | 
 action\_result\.data\.\*\.LastTime | string | 
-action\_result\.message | string | 
+action\_result\.data\.\*\.Rule\_msg | string | 
+action\_result\.data\.\*\.SrcIP | string | 
 action\_result\.summary\.total\_values | numeric | 
+action\_result\.message | string | 
 summary\.total\_objects | numeric | 
 summary\.total\_objects\_successful | numeric |   
 
@@ -317,13 +317,13 @@ PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 #### Action Output
 DATA PATH | TYPE | CONTAINS
 --------- | ---- | --------
-action\_result\.parameter\.watchlist\_id | string |  `esm watchlist id` 
-action\_result\.summary\.name | string | 
-action\_result\.summary\.type | string | 
-action\_result\.data\.\*\.values | string | 
 action\_result\.status | string | 
-action\_result\.message | string | 
+action\_result\.parameter\.watchlist\_id | string |  `esm watchlist id` 
+action\_result\.data\.\*\.values | string | 
+action\_result\.summary\.name | string | 
 action\_result\.summary\.total\_values | numeric | 
+action\_result\.summary\.type | string | 
+action\_result\.message | string | 
 summary\.total\_objects | numeric | 
 summary\.total\_objects\_successful | numeric |   
 
@@ -342,13 +342,13 @@ PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 #### Action Output
 DATA PATH | TYPE | CONTAINS
 --------- | ---- | --------
+action\_result\.status | string | 
 action\_result\.parameter\.values\_to\_add | string | 
 action\_result\.parameter\.watchlist\_id | string |  `esm watchlist id` 
-action\_result\.summary\.name | string | 
-action\_result\.summary\.type | string | 
 action\_result\.data\.\*\.values | string | 
-action\_result\.status | string | 
-action\_result\.message | string | 
+action\_result\.summary\.name | string | 
 action\_result\.summary\.total\_values | numeric | 
+action\_result\.summary\.type | string | 
+action\_result\.message | string | 
 summary\.total\_objects | numeric | 
 summary\.total\_objects\_successful | numeric | 
